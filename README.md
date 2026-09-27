@@ -1,115 +1,159 @@
-# Sambung Kata — Game Sambung Kata KBBI untuk Android
+<p align="center">
+  <img src="docs/img/banner.svg" alt="Sambung Kata — banner" width="100%">
+</p>
 
-Game sambung kata berbasis KBBI (108.344 kata) untuk Android 9+, dibuat oleh **zdn_gg**.
+<h1 align="center">Sambung Kata</h1>
 
-Seluruh layar adalah **WebView fullscreen** yang memuat satu paket web (HTML + CSS + JS) —
-logika permainan 100% JavaScript, sedangkan Kotlin berperan sebagai "cangkang" aplikasi
-(WebView fullscreen, server multiplayer, dan penemuan room).
+<p align="center">
+  <b>Game sambung kata berbasis KBBI untuk Android — 100% offline, mabar tanpa internet lewat WiFi/Hotspot & Bluetooth.</b><br>
+  108.344 kata asli KBBI · lawan bot tak terkalahkan · room online sampai 13 pemain · PIN 6 digit
+</p>
+
+<p align="center">
+  <a href="https://github.com/ZidaneBryanAnggitoWidagdo/sambungkata-apk/actions/workflows/android.yml"><img src="https://img.shields.io/github/actions/workflow/status/ZidaneBryanAnggitoWidagdo/sambungkata-apk/android.yml?branch=main&label=Build%20APK&logo=github" alt="Build APK"></a>
+  <img src="https://img.shields.io/badge/platform-Android%209%2B-3ddc84?logo=android&logoColor=white" alt="Android 9+">
+  <img src="https://img.shields.io/badge/kata%20KBBI-108.344-ffd88a" alt="108.344 kata">
+  <img src="https://img.shields.io/badge/pemain%20online-13%20max-5adfc9" alt="13 pemain">
+  <img src="https://img.shields.io/badge/version-1.1.0-f7a928" alt="versi">
+  <img src="https://img.shields.io/badge/license-MIT-blue" alt="MIT">
+</p>
+
+---
+
+## Tentang
+
+**Sambung Kata** adalah game rantai kata klasik: pemain berikutnya harus menyambung kata yang dimulai dari huruf/huruf akhir kata sebelumnya. Seluruh kamus KBBI (108.344 entri) terbenam di dalam APK, jadi game bisa dimainkan **sepenuhnya tanpa internet** — pun untuk mabar: pemain saling terhubung langsung lewat **WiFi/Hotspot** atau **Bluetooth**.
+
+Aplikasi ini dibangun dengan arsitektur **WebView hibrida**: seluruh layar adalah WebView fullscreen yang memuat satu paket HTML/JS, sehingga logika game (pemilihan kata, noise kesulitan, validasi KBBI, giliran, nyawa) berjalan cepat dan konsisten di semua perangkat, sementara Kotlin menangani jaringan (WebSocket LAN + Bluetooth RFCOMM) dan integrasi sistem.
+
+## Unduh APK
+
+**Cara termudah — build otomatis via GitHub Actions (tanpa Android Studio):**
+
+1. Buka tab [**Actions**](https://github.com/ZidaneBryanAnggitoWidagdo/sambungkata-apk/actions/workflows/android.yml) di repo ini
+2. Pilih run **"Android CI"** terbaru → scroll ke bagian **Artifacts**
+3. Unduh **`SambungKata-debug-apk`** → ekstrak → pasang `app-debug.apk` di HP
+4. Bisa juga build sendiri: buka repo di Android Studio (JDK 17) → `./gradlew assembleDebug`
+
+> Versi rilis dengan tag `v*` otomatis terbit di halaman [Releases](https://github.com/ZidaneBryanAnggitoWidagdo/sambungkata-apk/releases).
+
+## Tangkapan Layar
+
+| Menu Utama | Pilih Cara Main | Permainan (Hard) |
+|:---:|:---:|:---:|
+| ![Menu](docs/img/menu.png) | ![Mode](docs/img/mode.png) | ![Game](docs/img/game.png) |
+
+| Lobi Online | Kamusku | Profil |
+|:---:|:---:|:---:|
+| ![Online](docs/img/online.png) | ![Kamusku](docs/img/kamusku.png) | ![Profil](docs/img/profil.png) |
 
 ## Fitur
 
-### Mode Permainan
-- **Singleplayer vs Bot** — lawan bot *tak terkalahkan* (selalu menjawab tepat waktu). Bertahanlah selama mungkin!
-- **Main Sendiri (Solo)** — monolog dengan dirimu sendiri, kata yang kamu pakai tetap terkumpul.
-- **Online (WiFi/Hotspot yang sama)** — buat room atau gabung pakai **PIN 6 digit**. Maksimal **13 pemain**.
+- **Kamus KBBI penuh, 108.344 kata** — pencarian biner O(log n), validasi jawaban instan, bebas internet.
+- **3 tingkat kesulitan** dengan sistem *noise* (kurva kesulitan adaptif, lihat aturan di bawah).
+- **Singleplayer vs bot tak terkalahkan** — bot selalu menemukan jawaban valid dari kamus; bertahanlah selama mungkin.
+- **Main Sendiri (solo/monolog)** — latihan santai, semua kata masuk Kamusku.
+- **Online 2–13 pemain** — WiFi/Hotspot (deteksi room otomatis + PIN) **atau** Bluetooth RFCOMM.
+- **Kamusku + gelar** — kata yang kamu pakai otomatis tersimpan; kumpulkan 5.000 kata unik untuk gelar tertinggi **"Mahaguru Kata"**.
+- **Profil tamu** — tanpa login, nama default `guest`, maks 15 karakter tanpa karakter spesial.
+- **Chat room** (tidak disimpan) + **kick dengan alasan wajib** + sistem blokir: korban kick tidak bisa masuk 30 detik, mencoba masuk saat masih diblokir = sisa waktu **digandakan**.
+- **UI "Papan Huruf"** — tile 3D, tanpa aset eksternal, responsif dari layar 320px sampai tablet (teruji otomatis di 10 ukuran layar).
+- **Donasi GoPay** di layar Kredit — dukung pengembang dengan sekali salin nomor.
 
-### Tiga Kesulitan
-| Mode | Waktu | Awalan (prefix) | Catatan |
-|------|-------|-----------------|---------|
-| EASY | 25 detik | 1 huruf terakhir | Ujung kata `x/q/f` otomatis diganti huruf sebelumnya |
-| NORMAL | 15 detik | 1–3 huruf dari akhir kata | Kurva noise: awal 1–2 huruf → pertengahan mulai 3 huruf → akhir 2–3 huruf |
-| HARD | 10 detik | hingga 6 huruf | Giliran pertama pasti 1 huruf; jika tak ada prefix bagus 3–6 huruf, sistem boleh turun ke 1–2 |
+## Aturan Main
 
-- Awalan bisa **tidak berdampingan** (sub-sekuens dari huruf-huruf akhir kata, divalidasi kamus).
-- Sistem **anti-jalan-buntu**: kata yang membuat rantai mati ditolak *tanpa* dihitung salah.
-- Kata tidak sesuai KBBI / salah awalan / diulang = salah. **Salah ke-5 → -1 nyawa** (1–4 masih toleransi).
-- Habis waktu → **-1 nyawa** (prefix tetap, giliran pindah ke pemain berikutnya).
-- Setiap pemain punya **3 nyawa**; **pemain terakhir yang bertahan menang**.
+Rantai kata: kata berikutnya harus dimulai dengan **prefix** yang ditentukan sistem dari kata sebelumnya. Setiap pemain punya **3 nyawa** — habis waktu = −1 nyawa; setiap **salah ke-5** (kata tidak ada di KBBI / salah awalan / diulang) = −1 nyawa. Yang bertahan terakhir menang.
 
-### Sistem Lain
-- **Kamusku** — semua kata yang kamu pakai (offline & online) tersimpan di indeks pribadi untuk dipelajari.
-- **Gelar**: 0 Pemula Kata → 250 Penjelajah Kata → 1.000 Kolektor Kata → 2.500 Ahli Basa → 4.000 Sastrawan → **5.000 kata unik = Mahaguru Kata**.
-- **Profil** — akun tamu otomatis tanpa login; nama bisa diganti (maks 15 karakter, tanpa karakter spesial).
-- **Online**: chat room (tidak disimpan), host bisa **kick** pemain dengan alasan; yang dikick **tidak bisa masuk 30 detik** — mencoba masuk saat masih diblokir **menggandakan** sisa masa blokir.
-- **Kredit & Donasi** — dukung zdn_gg via GoPay `+6287802078095`.
+| | EASY | NORMAL | HARD |
+|---|---|---|---|
+| Waktu jawab | 25 detik | 15 detik | 10 detik |
+| Panjang prefix | 1 huruf (huruf akhir) | 1–3 huruf | 1–6 huruf |
+| Noise (awal) | — | mayoritas 1–2 huruf | prefix pertama pasti 1 huruf, lalu condong 3–5 |
+| Noise (pertengahan→akhir) | — | mulai muncul 3 huruf, akhirnya mayoritas 2–3 | 1 huruf jarang, umumnya 3–6 |
+| Aturan khusus | ujung **x/q/f** otomatis diganti huruf sebelumnya | prefix boleh sub-sekuens huruf akhir | tidak ada prefix bagus? sistem boleh turun ke 1–2 huruf |
 
-## Cara Build
+Sistem **selalu memvalidasi bahwa prefix yang diberikan masih punya kata hidup di kamus** (belum dipakai) — rantai tidak akan pernah macet karena ulah sistem.
 
-```bash
-# 1. Buka di Android Studio (Koala/baru, JDK 17) atau:
-./gradlew assembleDebug
-# 2. APK ada di app/build/outputs/apk/debug/app-debug.apk
-```
+## Mabar Online
 
-- minSdk **28** (Android 9), targetSdk 34.
-- Satu-satunya dependency: `org.java-websocket:Java-WebSocket:1.5.7`.
+**WiFi / Hotspot**
+1. Host: *Bermain → Online → Buat Room* → PIN 6 digit tampil.
+2. Pemain lain (WiFi/hotspot yang sama): *Gabung Room* → room terdeteksi otomatis (NSD/mDNS) atau masuk manual via IP host + PIN.
 
-## Cara Main Online
+**Bluetooth** *(tanpa WiFi sama sekali)*
+1. Host: pilih kanal **BLUETOOTH** → *Buat Room* → beri izin & aktifkan perangkat terlihat (ikon Bluetooth).
+2. Pemain lain: kanal **BLUETOOTH** → *Gabung Room* → masukkan PIN → pilih nama perangkat host → tersambung.
 
-1. Semua pemain terhubung ke **WiFi atau hotspot yang sama**.
-2. Host: *Bermain → Online → Buat Room* — muncul PIN 6 digit & IP.
-3. Teman: *Bermain → Online → Gabung Room* — room host otomatis terdeteksi
-   (atau masuk manual dengan IP host), lalu masukkan PIN dari host.
-4. Host memilih mode (easy/normal/hard) lalu tekan **Mulai Permainan**.
+Di dalam room: chat santai (tidak disimpan), host memilih mode (easy/normal/hard) sebelum mulai, pemain pertama dipilih acak, dan host bisa **mengeluarkan pemain dengan alasan** — korban mendapat pesan alasannya dan diblokir 30 detik (mencoba paksa = blokir digandakan).
 
 ## Arsitektur
 
 ```
 ┌─────────────────────────── APK ────────────────────────────┐
 │  MainActivity (Kotlin)                                     │
-│   ├─ WebView fullscreen ← file:///android_asset/index.html │
-│   ├─ GameServer (WebSocket, port 8787) — host multiplayer  │
-│   ├─ NsdHelper (mDNS _sambungkata._tcp.) — discovery room  │
-│   └─ Bridge "AndroidBridge" (ws client, copy, vibrate...)  │
-│                                                            │
-│  Paket Web (assets/)                                       │
-│   ├─ index.html — UI semua layar (tema "Papan Huruf")      │
-│   ├─ kamus.js — 108.344 kata terurut (1 string, 1.06 MB)   │
-│   ├─ engine.js — logika game murni (kamus, noise, ruang)   │
-│   └─ app.js — UI, penyimpanan lokal, sesi online           │
-└────────────────────────────────────────────────────────────┘
+│  ┌───────────────── WebView fullscreen (satu paket web) ─┐ │
+│  │  index.html + kamus.js + engine.js + app.js           │ │
+│  │  • Dict        binary search 108.344 kata             │ │
+│  │  • PrefixEngine noise/giliran sesuai mode             │ │
+│  │  • GameRoom    nyawa, giliran, bot, eliminasi         │ │
+│  │  • Host/Client sesi online (protokol JSON seragam)    │ │
+│  └───────────────────────┬───────────────────────────────┘ │
+│      AndroidBridge ◄─────┘  (wsSend/btSend, events, dsb.)  │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────────┐  │
+│  │ GameServer   │  │ BtManager    │  │ NsdHelper        │  │
+│  │ WebSocket LAN│  │ RFCOMM BT    │  │ mDNS discovery   │  │
+│  └──────────────┘  └──────────────┘  └──────────────────┘  │
+└─────────────────────────────────────────────────────────────┘
 ```
 
-**Kenapa kamus.js (sorted string + binary search)?**
-Mesin awalan melakukan 50–300 query prefix per giliran. Sorted array di memori JS
-memberi lookup ~0,8 µs/query (diukur: 1.000 query = 0,79 ms), parse awal < 300 ms,
-tanpa jembatan JS↔Kotlin per query. SQLite kalah cepat untuk pola akses ini karena
-setiap query harus melewati bridge asinkron.
+Protokol online identik untuk WiFi dan Bluetooth (`hello/join/roster/gmsg/chat/srv_kick/...`), sehingga logika game JS tidak peduli transport yang dipakai.
 
-## Testing (blackbox, otomatis)
+## Format Kamus
 
-```bash
-# 1) Engine: kamus, validasi, easy x/q/f (35 test)
-node tests/test_dict_easy.js
-# 2) Noise normal+hard: kurva kesulitan, fallback, rantai 300 langkah (3.163 test)
-node tests/test_noise_normal_hard.js
-# 3) GameRoom: nyawa, salah-5, timeout, bot, solo, 13 pemain (67 test)
-node tests/test_gameroom.js
-# 4) Protokol online: PIN, kick, blokir 30s & penggandaan, kapasitas (22 test)
-node tests/test_online_protocol.js
-# 5) UI end-to-end via headless browser (41 test, butuh playwright)
-python3 tests/test_ui_browser.py
-```
+Kamus disimpan sebagai **string terurut + binary search** (bukan SQLite/BIN): hasil benchmark internal menunjukkan validasi <1 µs/query, pemuatan 108.344 kata ±24 ms di WebView, dan konsumsi RAM jauh lebih hemat — paling optimal untuk arsitektur WebView offline. Detail lengkapnya ada di laporan `/docs` arsip proyek.
 
-Total **3.328 assertion** otomatis. `tests/mock_relay.js` adalah spesifikasi
-protokol yang diimplementasikan ulang 1:1 oleh `GameServer.kt`.
+## Pengujian
+
+Pengembangan berjalan dengan **blackbox testing** di setiap fitur:
+
+| Suite | Cakupan | Status |
+|---|---|---|
+| `test_dict_easy.js` | kamus, validasi, aturan easy & x/q/f | 35 ✔ |
+| `test_noise_normal_hard.js` | distribusi noise normal/hard, anti-macet 300 langkah | 3.163 ✔ |
+| `test_gameroom.js` | nyawa, salah-5, timeout, bot, 13 pemain | 67 ✔ |
+| `test_online_protocol.js` | protokol relay (join/PIN/blokir/kick/roster) | 22 ✔ |
+| `test_ui_browser.py` | alur UI end-to-end di headless browser | 41 ✔ |
+| `test_responsive.py` | **10 ukuran layar** — overflow/tumpang-tindih/kegunaan | 184 ✔ |
+| `test_bt_flow.py` | alur Bluetooth & WiFi: izin, scan, host/join, kick+alasan | 33 ✔ |
+| **Total** | | **3.545 assertion lulus** |
 
 ## Struktur Proyek
 
 ```
 app/src/main/
-├── AndroidManifest.xml
-├── assets/                  (kamus.js · engine.js · app.js · index.html)
+├── assets/            # satu paket web: index.html, kamus.js, engine.js, app.js
 ├── java/com/zdngg/sambungkata/
-│   ├── MainActivity.kt      (WebView fullscreen + bridge)
-│   ├── GameServer.kt        (server WebSocket multiplayer)
-│   └── NsdHelper.kt         (penemuan room mDNS)
-└── res/                     (tema & ikon)
-tools/build_kamus.py         (generator kamus.js — reproducible)
-tests/                       (5 suite test blackbox)
+│   ├── MainActivity.kt   # WebView fullscreen + jembatan JS
+│   ├── GameServer.kt     # server WebSocket LAN (host WiFi)
+│   ├── BtManager.kt      # host/client Bluetooth RFCOMM
+│   └── NsdHelper.kt      # discovery room via mDNS
+└── AndroidManifest.xml
+tests/                  # 7 suite blackbox (Node.js + Playwright)
+tools/                  # skrip build kamus, ikon, banner, screenshot
+.github/workflows/      # CI: build APK otomatis + release
 ```
 
-## Kredit
+## Kredit & Donasi
 
-- Game oleh **zdn_gg** — donasi via GoPay: **+6287802078095**
-- Sumber data kata: KBBI (kumpulan kata daring sumber terbuka)
+Dibuat oleh **zdn_gg** dengan penuh semangat untuk para pecinta kata.
+
+Sumber kata: **KBBI** (Badan Pengembangan dan Pembinaan Bahasa) — 108.344 entri.
+
+<p align="center">
+  <b> dukung pengembang via GoPay </b><br>
+  <kbd style="font-size:1.2em">+62 878-0207-8095</kbd>
+</p>
+
+## Lisensi
+
+[MIT](LICENSE) © zdn_gg

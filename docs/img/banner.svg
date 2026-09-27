@@ -1,0 +1,108 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="320" viewBox="0 0 1200 320" role="img" aria-label="Sambung Kata">
+  <defs>
+    <radialGradient id="bg" cx="50%" cy="0%" r="120%">
+      <stop offset="0%" stop-color="#1c2440"/>
+      <stop offset="55%" stop-color="#131829"/>
+      <stop offset="100%" stop-color="#0d1120"/>
+    </radialGradient>
+    <linearGradient id="gamber" x1="0" y1="0" x2="0.4" y2="1">
+      <stop offset="0%" stop-color="#ffd88a"/><stop offset="100%" stop-color="#f7a928"/>
+    </linearGradient>
+    <linearGradient id="gteal" x1="0" y1="0" x2="0.4" y2="1">
+      <stop offset="0%" stop-color="#8ff0e2"/><stop offset="100%" stop-color="#2fc4ad"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="320" fill="url(#bg)"/>
+  <!-- tile latar mengambang -->
+  <g opacity="0.16">
+    <rect x="60"  y="40"  width="64" height="72" rx="12" fill="#2c3860"/>
+    <rect x="1050" y="210" width="72" height="80" rx="12" fill="#2c3860"/>
+    <rect x="150" y="230" width="52" height="60" rx="10" fill="#2c3860"/>
+    <rect x="980" y="30" width="56" height="64" rx="10" fill="#2c3860"/>
+    <text x="92" y="86" font-family="Arial" font-size="34" font-weight="900" fill="#3d4a75" text-anchor="middle" dominant-baseline="central">Z</text>
+    <text x="1086" y="260" font-family="Arial" font-size="38" font-weight="900" fill="#3d4a75" text-anchor="middle" dominant-baseline="central">K</text>
+    <text x="176" y="270" font-family="Arial" font-size="28" font-weight="900" fill="#3d4a75" text-anchor="middle" dominant-baseline="central">O</text>
+    <text x="1008" y="72" font-family="Arial" font-size="28" font-weight="900" fill="#3d4a75" text-anchor="middle" dominant-baseline="central">F</text>
+  </g>
+  
+  <g>
+    <rect x="276.0" y="53" width="84" height="96" rx="16" fill="#b96f0a"/>
+    <rect x="276.0" y="46" width="84" height="96" rx="16" fill="url(#gamber)"/>
+    <rect x="282.0" y="51" width="72" height="10" rx="5" fill="#ffffff" opacity="0.35"/>
+    <text x="318.0" y="95.0" font-family="Arial Black, Arial, sans-serif" font-size="50" font-weight="900"
+      fill="#3d2600" text-anchor="middle" dominant-baseline="central">S</text>
+  </g>
+  <g>
+    <rect x="370.0" y="53" width="84" height="96" rx="16" fill="#b96f0a"/>
+    <rect x="370.0" y="46" width="84" height="96" rx="16" fill="url(#gamber)"/>
+    <rect x="376.0" y="51" width="72" height="10" rx="5" fill="#ffffff" opacity="0.35"/>
+    <text x="412.0" y="95.0" font-family="Arial Black, Arial, sans-serif" font-size="50" font-weight="900"
+      fill="#3d2600" text-anchor="middle" dominant-baseline="central">A</text>
+  </g>
+  <g>
+    <rect x="464.0" y="53" width="84" height="96" rx="16" fill="#b96f0a"/>
+    <rect x="464.0" y="46" width="84" height="96" rx="16" fill="url(#gamber)"/>
+    <rect x="470.0" y="51" width="72" height="10" rx="5" fill="#ffffff" opacity="0.35"/>
+    <text x="506.0" y="95.0" font-family="Arial Black, Arial, sans-serif" font-size="50" font-weight="900"
+      fill="#3d2600" text-anchor="middle" dominant-baseline="central">M</text>
+  </g>
+  <g>
+    <rect x="558.0" y="53" width="84" height="96" rx="16" fill="#b96f0a"/>
+    <rect x="558.0" y="46" width="84" height="96" rx="16" fill="url(#gamber)"/>
+    <rect x="564.0" y="51" width="72" height="10" rx="5" fill="#ffffff" opacity="0.35"/>
+    <text x="600.0" y="95.0" font-family="Arial Black, Arial, sans-serif" font-size="50" font-weight="900"
+      fill="#3d2600" text-anchor="middle" dominant-baseline="central">B</text>
+  </g>
+  <g>
+    <rect x="652.0" y="53" width="84" height="96" rx="16" fill="#b96f0a"/>
+    <rect x="652.0" y="46" width="84" height="96" rx="16" fill="url(#gamber)"/>
+    <rect x="658.0" y="51" width="72" height="10" rx="5" fill="#ffffff" opacity="0.35"/>
+    <text x="694.0" y="95.0" font-family="Arial Black, Arial, sans-serif" font-size="50" font-weight="900"
+      fill="#3d2600" text-anchor="middle" dominant-baseline="central">U</text>
+  </g>
+  <g>
+    <rect x="746.0" y="53" width="84" height="96" rx="16" fill="#b96f0a"/>
+    <rect x="746.0" y="46" width="84" height="96" rx="16" fill="url(#gamber)"/>
+    <rect x="752.0" y="51" width="72" height="10" rx="5" fill="#ffffff" opacity="0.35"/>
+    <text x="788.0" y="95.0" font-family="Arial Black, Arial, sans-serif" font-size="50" font-weight="900"
+      fill="#3d2600" text-anchor="middle" dominant-baseline="central">N</text>
+  </g>
+  <g>
+    <rect x="840.0" y="53" width="84" height="96" rx="16" fill="#b96f0a"/>
+    <rect x="840.0" y="46" width="84" height="96" rx="16" fill="url(#gamber)"/>
+    <rect x="846.0" y="51" width="72" height="10" rx="5" fill="#ffffff" opacity="0.35"/>
+    <text x="882.0" y="95.0" font-family="Arial Black, Arial, sans-serif" font-size="50" font-weight="900"
+      fill="#3d2600" text-anchor="middle" dominant-baseline="central">G</text>
+  </g>
+  
+  <g>
+    <rect x="417.0" y="165" width="84" height="96" rx="16" fill="#157c6d"/>
+    <rect x="417.0" y="158" width="84" height="96" rx="16" fill="url(#gteal)"/>
+    <rect x="423.0" y="163" width="72" height="10" rx="5" fill="#ffffff" opacity="0.35"/>
+    <text x="459.0" y="207.0" font-family="Arial Black, Arial, sans-serif" font-size="50" font-weight="900"
+      fill="#03332b" text-anchor="middle" dominant-baseline="central">K</text>
+  </g>
+  <g>
+    <rect x="511.0" y="165" width="84" height="96" rx="16" fill="#157c6d"/>
+    <rect x="511.0" y="158" width="84" height="96" rx="16" fill="url(#gteal)"/>
+    <rect x="517.0" y="163" width="72" height="10" rx="5" fill="#ffffff" opacity="0.35"/>
+    <text x="553.0" y="207.0" font-family="Arial Black, Arial, sans-serif" font-size="50" font-weight="900"
+      fill="#03332b" text-anchor="middle" dominant-baseline="central">A</text>
+  </g>
+  <g>
+    <rect x="605.0" y="165" width="84" height="96" rx="16" fill="#157c6d"/>
+    <rect x="605.0" y="158" width="84" height="96" rx="16" fill="url(#gteal)"/>
+    <rect x="611.0" y="163" width="72" height="10" rx="5" fill="#ffffff" opacity="0.35"/>
+    <text x="647.0" y="207.0" font-family="Arial Black, Arial, sans-serif" font-size="50" font-weight="900"
+      fill="#03332b" text-anchor="middle" dominant-baseline="central">T</text>
+  </g>
+  <g>
+    <rect x="699.0" y="165" width="84" height="96" rx="16" fill="#157c6d"/>
+    <rect x="699.0" y="158" width="84" height="96" rx="16" fill="url(#gteal)"/>
+    <rect x="705.0" y="163" width="72" height="10" rx="5" fill="#ffffff" opacity="0.35"/>
+    <text x="741.0" y="207.0" font-family="Arial Black, Arial, sans-serif" font-size="50" font-weight="900"
+      fill="#03332b" text-anchor="middle" dominant-baseline="central">A</text>
+  </g>
+  <text x="600.0" y="300" font-family="Arial" font-size="21" font-weight="bold" letter-spacing="6"
+    fill="#8b95bd" text-anchor="middle">RANTAI KATA &#183; KBBI &#183; OFFLINE &#183; MULTIPLAYER</text>
+</svg>

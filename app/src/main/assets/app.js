@@ -5,7 +5,7 @@
  * ============================================================= */
 "use strict";
 (function () {
-  var APP_VERSION = "1.0.0";
+  var APP_VERSION = "1.1.0";
   var ENGINE = window.Engine;
   var dict = null;
 
@@ -415,18 +415,28 @@
   /* ================================================================
    * ONLINE — jembatan Android + WebSocket
    * Kotlin menyediakan: startServer/stopServer/discoverRooms/getMyIp/
-   * wsConnect/wsSend/wsClose + event lewat window.__onBridgeEvent.
+   * wsConnect/wsSend/wsClose + Bluetooth: btStartHost/btConnect/btSend/...
+   * Event masuk lewat window.__onBridgeEvent.
    * Di browser (tanpa bridge) online dinonaktifkan dengan pesan jelas.
    * ================================================================ */
   var HAS_BRIDGE = typeof window.AndroidBridge !== "undefined" &&
     typeof window.AndroidBridge.startServer === "function";
+  var HAS_BT = HAS_BRIDGE && typeof window.AndroidBridge.btStartHost === "function";
 
-  /* ---- adapter koneksi ws (1 koneksi aktif per perangkat) ---- */
+  /* kanal koneksi yang dipilih di lobi online: 'wifi' | 'bt' */
+  var Online = { channel: "wifi" };
+
+  /* ---- adapter koneksi (1 koneksi aktif per perangkat) ----
+   * NetMode 'ws'  : WebSocket (WiFi/LAN — loopback utk host)
+   * NetMode 'bt'  : bridge Bluetooth (RFCOMM via Kotlin)
+   */
+  var NetMode = "ws";
   var Net = {
     onOpen: null, onMsg: null, onClose: null,
     _ws: null,
     connect: function (url) {
       var self = this;
+      if (NetMode === "bt") { setTimeout(function () { self.onOpen && self.onOpen(); }, 0); return; }
       this.close();
       if (HAS_BRIDGE) {
         window.AndroidBridge.wsConnect(url);
@@ -442,10 +452,12 @@
       }
     },
     send: function (s) {
+      if (NetMode === "bt") { try { window.AndroidBridge.btSend(s); } catch (e) {} return; }
       if (HAS_BRIDGE) window.AndroidBridge.wsSend(s);
       else if (this._ws && this._ws.readyState === 1) this._ws.send(s);
     },
     close: function () {
+      if (NetMode === "bt") { try { window.AndroidBridge.btDisconnect(); } catch (e) {} return; }
       if (HAS_BRIDGE) { try { window.AndroidBridge.wsClose(); } catch (e) {} }
       else if (this._ws) { try { this._ws.onclose = null; this._ws.close(); } catch (e) {} this._ws = null; }
     }
@@ -457,9 +469,20 @@
       if (ev.k === "ws_open") Net.onOpen && Net.onOpen();
       else if (ev.k === "ws_msg") Net.onMsg && Net.onMsg(ev.data);
       else if (ev.k === "ws_close") Net.onClose && Net.onClose();
+      else if (ev.k === "bt_open") Net.onOpen && Net.onOpen();
+      else if (ev.k === "bt_msg") Net.onMsg && Net.onMsg(ev.data);
+      else if (ev.k === "bt_close") Net.onClose && Net.onClose();
       else if (ev.k === "room_found") window.__roomFound && window.__roomFound(ev);
       else if (ev.k === "server_started") window.__serverStarted && window.__serverStarted(ev);
       else if (ev.k === "server_error") window.__serverError && window.__serverError(ev);
+      else if (ev.k === "bt_server_started") window.__btServerStarted && window.__btServerStarted(ev);
+      else if (ev.k === "bt_server_stopped") window.__btServerStopped && window.__btServerStopped(ev);
+      else if (ev.k === "bt_perms") window.__btPerms && window.__btPerms(ev);
+      else if (ev.k === "bt_device") window.__btDevice && window.__btDevice(ev);
+      else if (ev.k === "bt_scan_done") window.__btScanDone && window.__btScanDone(ev);
+      else if (ev.k === "bt_enable_result") window.__btEnableResult && window.__btEnableResult(ev);
+      else if (ev.k === "bt_discoverable_result") window.__btDiscResult && window.__btDiscResult(ev);
+      else if (ev.k === "bt_error") toast("Bluetooth: " + (ev.err || "gagal"));
     } catch (e) { console.error("bridgeEvent", e); }
   }
   window.__onBridgeEvent = bridgeEvent;
@@ -469,23 +492,45 @@
   /* =================== SESI HOST =================== */
   var Host = {
     active: false, pin: "", ip: "", port: 8787, mode: "normal",
+    channel: "wifi", btDeviceName: "",
     roster: {}, // id -> {name, ip}
     myId: "H",
     room: null, ticker: null, inGame: false,
     create: function () {
       var self = this;
       if (!HAS_BRIDGE) { toast("Mode online hanya tersedia di aplikasi Android."); return; }
+      this.channel = Online.channel;
       this.pin = String(100000 + Math.floor(Math.random() * 900000));
-      window.__serverStarted = function (ev) {
-        self.ip = ev.ip; self.port = ev.port;
-        $("pin-display").textContent = self.pin;
-        $("host-ip").textContent = "IP kamu: " + self.ip + "  ·  port " + self.port;
-        self.connectConsole();
-      };
-      window.__serverError = function (ev) { toast("Gagal membuat server: " + (ev.err || "?")); };
-      window.AndroidBridge.startServer(this.pin, profile.name);
+      this.inGame = false;
+      this.roster = {};
+      if (this.channel === "bt") {
+        if (!HAS_BT) { toast("Bluetooth tidak didukung perangkat/versi ini."); return; }
+        window.__btServerStarted = function (ev) {
+          self.btDeviceName = ev.deviceName || "perangkat ini";
+          $("pin-display").textContent = self.pin;
+          $("host-ip").textContent = "Bluetooth · " + self.btDeviceName;
+          $("host-chan").textContent = "BLUETOOTH";
+          $("bt-visible").style.display = "";
+          NetMode = "bt";
+          self.connectConsole();
+        };
+        window.AndroidBridge.btStartHost(this.pin, profile.name);
+      } else {
+        window.__serverStarted = function (ev) {
+          self.ip = ev.ip; self.port = ev.port;
+          $("pin-display").textContent = self.pin;
+          $("host-ip").textContent = "WiFi · IP kamu: " + self.ip + "  ·  port " + self.port;
+          $("host-chan").textContent = "WIFI";
+          $("bt-visible").style.display = "none";
+          self.connectConsole();
+        };
+        window.__serverError = function (ev) { toast("Gagal membuat server: " + (ev.err || "?")); };
+        window.AndroidBridge.startServer(this.pin, profile.name);
+      }
       $("pin-display").textContent = "......";
       $("host-ip").textContent = "menyalakan server...";
+      $("host-chan").textContent = this.channel === "bt" ? "BLUETOOTH" : "WIFI";
+      $("bt-visible").style.display = "none";
       show("host", true); _prev = [];
       this.active = true;
       this.renderPlayers();
@@ -504,7 +549,10 @@
         case "hello": this.myId = m.id || "H"; break;
         case "roster":
           this.roster = {};
-          (m.players || []).forEach(function (p) { self.roster[p.id] = { name: p.name }; });
+          (m.players || []).forEach(function (p) {
+            // entri host ("H") dirender terpisah oleh renderPlayers — jangan dobel
+            if (p.id !== "H") self.roster[p.id] = { name: p.name };
+          });
           this.renderPlayers();
           break;
         case "joined":
@@ -694,7 +742,10 @@
       if (this.ticker) clearInterval(this.ticker);
       if (this.room) { this.room.over = true; this.room.running = false; }
       Net.close();
-      if (HAS_BRIDGE) { try { window.AndroidBridge.stopServer(); } catch (e) {} }
+      if (this.channel === "bt") {
+        if (HAS_BT) { try { window.AndroidBridge.btStopHost(); } catch (e) {} }
+        NetMode = "ws";
+      } else if (HAS_BRIDGE) { try { window.AndroidBridge.stopServer(); } catch (e) {} }
       this.roster = {};
     }
   };
@@ -702,6 +753,7 @@
   /* =================== SESI CLIENT =================== */
   var Client = {
     active: false, pin: "", ip: "", port: 8787,
+    channel: "wifi", btAddr: "",
     myId: null, name: "",
     phase: "lobby", mode: null,
     players: [], // [{id,name,lives,alive}] — dari broadcast host
@@ -711,6 +763,7 @@
       var self = this;
       this.ip = ip; this.pin = pin; this.name = profile.name;
       this.port = 8787;
+      this.channel = "wifi";
       this.active = true;
       Net.onOpen = function () { self.sendJoin(); };
       Net.onMsg = function (data) { self.onMsg(data); };
@@ -721,7 +774,29 @@
         self.phase = "disconnected";
       };
       this.phase = "joining";
+      NetMode = "ws";
       Net.connect("ws://" + ip + ":" + this.port);
+    },
+    /* masuk lewat Bluetooth — addr = MAC perangkat host */
+    joinBt: function (addr, pin) {
+      var self = this;
+      this.btAddr = addr; this.pin = pin; this.name = profile.name;
+      this.channel = "bt";
+      this.active = true;
+      Net.onOpen = function () { self.sendJoin(); };
+      Net.onMsg = function (data) { self.onMsg(data); };
+      Net.onClose = function () {
+        if (!self.active) return;
+        if (self.phase === "joining") toast("Tidak bisa terhubung ke perangkat host.");
+        else if (self.phase !== "banned" && self.phase !== "kicked") toast("Koneksi Bluetooth terputus.");
+        self.phase = "disconnected";
+      };
+      this.phase = "joining";
+      NetMode = "bt";
+      $("bt-status").textContent = "menyambung ke " + addr + "...";
+      try { window.AndroidBridge.btConnect(addr); } catch (e) {
+        toast("Gagal memulai koneksi Bluetooth.");
+      }
     },
     sendJoin: function () {
       send({ t: "join", pin: this.pin, name: this.name });
@@ -927,6 +1002,47 @@
       this.active = false;
       clearInterval(this.banTimer);
       Net.close();
+      if (this.channel === "bt") NetMode = "ws";
+      if (HAS_BT) { try { window.AndroidBridge.btStopScan(); } catch (e) {} }
+    }
+  };
+
+  /* =================== SCAN BLUETOOTH (layar gabung) =================== */
+  var BtScan = {
+    devices: {}, // addr -> {name, addr}
+    reset: function () { this.devices = {}; var l = $("bt-devices"); if (l) l.innerHTML = ""; },
+    add: function (ev) {
+      if (!ev.addr || this.devices[ev.addr]) return;
+      this.devices[ev.addr] = { name: ev.name || "Perangkat tanpa nama", addr: ev.addr };
+      this.render();
+    },
+    render: function () {
+      var list = $("bt-devices");
+      if (!list) return;
+      var keys = Object.keys(this.devices);
+      var empty = $("bt-devices-empty");
+      if (empty) empty.style.display = keys.length ? "none" : "";
+      list.innerHTML = "";
+      var self = this;
+      keys.forEach(function (a) {
+        var d = self.devices[a];
+        var r = el("div", "roomrow");
+        r.setAttribute("data-addr", a);
+        r.innerHTML = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#5adfc9" stroke-width="2"><path d="M7 7l10 10-5 5V2l5 5L7 17"/></svg>' +
+          '<span class="rn">' + esc(d.name) + '</span><span class="ri">' + esc(a) + '</span>';
+        r.onclick = function () { self.pick(a); };
+        list.appendChild(r);
+      });
+    },
+    pick: function (addr) {
+      var pin = $("join-pin").value.trim();
+      if (!/^[0-9]{6}$/.test(pin)) { toast("Isi PIN 6 digit dari host dulu."); $("join-pin").focus(); return; }
+      Client.leave();
+      Client.joinBt(addr, pin);
+    },
+    scanDone: function () {
+      var s = $("bt-status");
+      if (s) s.textContent = "Pemindaian selesai — pastikan host sudah menekan Buat Room & terlihat (discoverable).";
     }
   };
 
@@ -1030,13 +1146,31 @@
         show("menu", true); _prev = [];
       }, true);
     };
-    // online
-    $("on-create").onclick = function () { Host.create(); };
-    $("on-join").onclick = function () {
-      if (!HAS_BRIDGE) { toast("Pencarian otomatis hanya di aplikasi Android — kamu masih bisa masuk manual lewat IP."); }
-      else if (window.AndroidBridge.discoverRooms) { window.AndroidBridge.discoverRooms(); }
-      $("room-list").innerHTML = '<div class="muted" id="room-list-empty">Mencari room di jaringan...</div>';
-      show("join");
+    // online — pilih kanal & aksi
+    document.querySelectorAll("#online-chan button").forEach(function (b) {
+      b.onclick = function () {
+        document.querySelectorAll("#online-chan button").forEach(function (x) { x.classList.remove("on"); });
+        b.classList.add("on");
+        Online.channel = b.getAttribute("data-ch");
+        $("online-hint").textContent = Online.channel === "bt"
+          ? "Pakai Bluetooth: host tekan Buat Room, pemain lain pilih nama perangkat host. Tidak butuh internet/WiFi."
+          : "Pastikan semua pemain terhubung ke WiFi atau hotspot yang sama. Room terdeteksi otomatis di jaringan yang sama.";
+      };
+    });
+    $("on-create").onclick = function () {
+      if (Online.channel === "bt") btGate(function () { Host.create(); });
+      else Host.create();
+    };
+    $("on-join").onclick = function () { showJoinChannel(Online.channel); };
+    // tombol "perlihatkan perangkat" di room host BT
+    $("bt-visible").onclick = function () {
+      if (HAS_BT) { window.AndroidBridge.btMakeDiscoverable(); toast("Izinkan perangkat lain menemukanmu."); }
+    };
+    // bt scan di layar join
+    $("bt-rescan").onclick = function () {
+      BtScan.reset();
+      $("bt-status").textContent = "memindai perangkat terdekat...";
+      if (HAS_BT) window.AndroidBridge.btStartScan();
     };
     $("join-btn").onclick = function () {
       var ip = $("join-ip").value.trim();
@@ -1062,7 +1196,8 @@
       }, true);
     };
     $("pin-copy").onclick = function () {
-      var s = "PIN: " + Host.pin + " | IP: " + Host.ip;
+      var s = "PIN: " + Host.pin +
+        (Host.channel === "bt" ? " | Bluetooth: " + Host.btDeviceName : " | IP: " + Host.ip);
       if (HAS_BRIDGE && window.AndroidBridge.copyText) { window.AndroidBridge.copyText(s); toast("Disalin: " + s); }
       else toast(s);
     };
@@ -1097,6 +1232,47 @@
   }
 
   var _diffTarget = "sp";
+
+  /* =================== BANTUAN KANAL ONLINE =================== */
+
+  /* pastikan izin + Bluetooth aktif, lalu jalankan lanjutan */
+  function btGate(next) {
+    if (!HAS_BT) { toast("Bluetooth tidak didukung di perangkat ini."); return; }
+    window.__btPerms = function (ev) {
+      window.__btPerms = null;
+      if (!ev.granted) { toast("Izin Bluetooth ditolak — tidak bisa lanjut."); return; }
+      if (window.AndroidBridge.btEnabled()) { next(); return; }
+      window.__btEnableResult = function (ev2) {
+        window.__btEnableResult = null;
+        if (ev2.ok) next();
+        else toast("Bluetooth belum aktif.");
+      };
+      window.AndroidBridge.btEnable();
+    };
+    window.AndroidBridge.btEnsurePermissions();
+  }
+
+  function showJoinChannel(channel) {
+    show("join");
+    $("join-wifi-pane").style.display = channel === "wifi" ? "" : "none";
+    $("join-bt-pane").style.display = channel === "bt" ? "" : "none";
+    $("join-title-sub").textContent = channel === "bt" ? "Bluetooth" : "WiFi / Hotspot";
+    if (channel === "wifi") {
+      if (!HAS_BRIDGE) toast("Pencarian otomatis hanya di aplikasi Android — masuk manual lewat IP.");
+      else if (window.AndroidBridge.discoverRooms) window.AndroidBridge.discoverRooms();
+      $("room-list").innerHTML = '<div class="muted" id="room-list-empty">Mencari room di jaringan...</div>';
+    } else {
+      btGate(function () {
+        BtScan.reset();
+        $("bt-status").textContent = "memindai perangkat terdekat...";
+        window.AndroidBridge.btStartScan();
+      });
+    }
+  }
+
+  /* event dari bridge: perangkat BT ditemukan / scan selesai */
+  window.__btDevice = function (ev) { BtScan.add(ev); };
+  window.__btScanDone = function () { BtScan.scanDone(); };
 
   /* tombol back Android */
   window.__onAndroidBack = function () {

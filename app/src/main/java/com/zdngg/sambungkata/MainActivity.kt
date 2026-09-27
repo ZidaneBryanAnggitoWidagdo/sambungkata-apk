@@ -5,6 +5,7 @@ import android.app.Activity
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
+import android.content.Intent
 import android.os.Bundle
 import android.view.View
 import android.view.WindowManager
@@ -32,6 +33,7 @@ class MainActivity : Activity() {
     private var server: GameServer? = null
     private var nsd: NsdHelper? = null
     private var wsClient: org.java_websocket.client.WebSocketClient? = null
+    private var bt: BtManager? = null
 
     @SuppressLint("SetJavaScriptEnabled")
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -59,6 +61,31 @@ class MainActivity : Activity() {
     override fun onWindowFocusChanged(hasFocus: Boolean) {
         super.onWindowFocusChanged(hasFocus)
         if (hasFocus) applyImmersive()
+    }
+
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        when (requestCode) {
+            700 -> pushEvent(JSONObject()
+                .put("k", "bt_enable_result").put("ok", resultCode > 0))
+            701 -> pushEvent(JSONObject()
+                .put("k", "bt_discoverable_result").put("ok", resultCode > 0)
+                .put("seconds", resultCode))
+        }
+    }
+
+    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        if (requestCode == 702) {
+            var all = grantResults.isNotEmpty()
+            for (r in grantResults) if (r != android.content.pm.PackageManager.PERMISSION_GRANTED) all = false
+            pushEvent(JSONObject().put("k", "bt_perms").put("granted", all))
+        }
+    }
+
+    private fun btMgr(): BtManager {
+        if (bt == null) bt = BtManager(applicationContext) { ev -> pushEvent(ev) }
+        return bt!!
     }
 
     private fun applyImmersive() {
@@ -237,6 +264,91 @@ class MainActivity : Activity() {
         fun exitApp() {
             runOnUiThread { finish() }
         }
+
+        // ---------------- Bluetooth ----------------
+
+        @JavascriptInterface
+        fun btSupported(): Boolean {
+            val mgr = getSystemService(Context.BLUETOOTH_SERVICE) as? android.bluetooth.BluetoothManager
+            return mgr?.adapter != null
+        }
+
+        /** Push event {k:"bt_perms", granted} setelah izin selesai diminta. */
+        @JavascriptInterface
+        fun btEnsurePermissions() {
+            runOnUiThread {
+                val needed = ArrayList<String>()
+                if (android.os.Build.VERSION.SDK_INT >= 31) {
+                    if (checkSelfPermission(android.Manifest.permission.BLUETOOTH_CONNECT) != android.content.pm.PackageManager.PERMISSION_GRANTED)
+                        needed.add(android.Manifest.permission.BLUETOOTH_CONNECT)
+                    if (checkSelfPermission(android.Manifest.permission.BLUETOOTH_SCAN) != android.content.pm.PackageManager.PERMISSION_GRANTED)
+                        needed.add(android.Manifest.permission.BLUETOOTH_SCAN)
+                } else {
+                    if (checkSelfPermission(android.Manifest.permission.ACCESS_FINE_LOCATION) != android.content.pm.PackageManager.PERMISSION_GRANTED)
+                        needed.add(android.Manifest.permission.ACCESS_FINE_LOCATION)
+                }
+                if (needed.isEmpty()) {
+                    pushEvent(JSONObject().put("k", "bt_perms").put("granted", true))
+                } else {
+                    requestPermissions(needed.toTypedArray(), 702)
+                }
+            }
+        }
+
+        @JavascriptInterface
+        fun btEnabled(): Boolean = try {
+            (getSystemService(Context.BLUETOOTH_SERVICE) as? android.bluetooth.BluetoothManager)?.adapter?.isEnabled == true
+        } catch (e: Exception) { false }
+
+        @JavascriptInterface
+        fun btEnable() {
+            runOnUiThread {
+                try {
+                    startActivityForResult(Intent(android.bluetooth.BluetoothAdapter.ACTION_REQUEST_ENABLE), 700)
+                } catch (e: Exception) {
+                    pushEvent(JSONObject().put("k", "bt_enable_result").put("ok", false))
+                }
+            }
+        }
+
+        @JavascriptInterface
+        fun btStartHost(pin: String, roomName: String) {
+            val p = pin.filter { it.isDigit() }.take(6).padEnd(6, '0')
+            Thread { btMgr().startHost(p, roomName) }.start()
+        }
+
+        @JavascriptInterface
+        fun btStopHost() {
+            Thread { bt?.stopHost() }.start()
+        }
+
+        @JavascriptInterface
+        fun btMakeDiscoverable() {
+            runOnUiThread {
+                try {
+                    val i = Intent(android.bluetooth.BluetoothAdapter.ACTION_REQUEST_DISCOVERABLE)
+                    i.putExtra(android.bluetooth.BluetoothAdapter.EXTRA_DISCOVERABLE_DURATION, 300)
+                    startActivityForResult(i, 701)
+                } catch (e: Exception) {
+                    pushEvent(JSONObject().put("k", "bt_discoverable_result").put("ok", false))
+                }
+            }
+        }
+
+        @JavascriptInterface
+        fun btStartScan() { Thread { btMgr().startScan() }.start() }
+
+        @JavascriptInterface
+        fun btStopScan() { Thread { bt?.stopScan() }.start() }
+
+        @JavascriptInterface
+        fun btConnect(addr: String) { Thread { btMgr().connect(addr) }.start() }
+
+        @JavascriptInterface
+        fun btDisconnect() { Thread { bt?.disconnectClient() }.start() }
+
+        @JavascriptInterface
+        fun btSend(message: String) { bt?.onJsSend(message) }
     }
 
     private fun closeWs() {
@@ -254,6 +366,7 @@ class MainActivity : Activity() {
             Thread { try { srv.stop(100) } catch (e: Exception) {} }.start()
         }
         closeWs()
+        bt?.cleanup()
         webView.destroy()
         super.onDestroy()
     }

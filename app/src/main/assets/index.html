@@ -98,9 +98,10 @@ body {
 
 /* --- menu --- */
 #scr-menu { align-items:center; justify-content:center; gap:0; }
-#menu-logo { margin-bottom:8px; }
-#menu-logo .tile { width:46px; height:52px; font-size:26px; }
-#menu-logo2 .tile { width:58px; height:66px; font-size:34px; }
+#menu-logo { margin-bottom:8px; max-width:100%; }
+#menu-logo .tile { width:clamp(30px, 11.5vw, 46px); height:clamp(34px, 13vw, 52px); font-size:clamp(17px, 6.6vw, 26px); }
+#menu-logo2 .tile { width:clamp(38px, 14vw, 58px); height:clamp(43px, 16vw, 66px); font-size:clamp(22px, 8.4vw, 34px); }
+.logo-row { gap:clamp(4px, 1.8vw, 8px); }
 #menu-tag { color:#8b95bd; font-size:13px; margin:14px 0 30px; letter-spacing:2px; text-transform:uppercase; font-weight:700;}
 #menu-btns { width:100%; max-width:360px; display:flex; flex-direction:column; gap:14px; }
 #menu-foot { position:absolute; bottom:16px; left:0; right:0; text-align:center; }
@@ -154,14 +155,14 @@ body {
 .fitem .fn { color:#8b95bd; } .fitem .fr { color:#8b95bd; font-size:11px; margin-left:auto; }
 #input-row { display:flex; gap:10px; margin-top:10px; }
 #word-input {
-  flex:1; border:2px solid #303a5f; background:#171d33; color:#eef1fb;
+  flex:1; min-width:0; border:2px solid #303a5f; background:#171d33; color:#eef1fb;
   border-radius:14px; padding:14px 16px; font-size:18px; font-weight:700; font-family:inherit;
   outline:none; text-transform:lowercase;
 }
 #word-input:focus { border-color:#f7a928; }
 #word-input.err { border-color:#ff5d6c; animation: shake .3s; }
 @keyframes shake { 0%,100%{transform:none;} 25%{transform:translateX(-6px);} 75%{transform:translateX(6px);} }
-#btn-send { width:56px; border:none; border-radius:14px; cursor:pointer;
+#btn-send { flex:0 0 auto; width:56px; border:none; border-radius:14px; cursor:pointer;
   background:linear-gradient(180deg,#ffbe4d,#f79e1d); color:#3d2600;
   box-shadow:0 4px 0 #b96f0a; display:flex; align-items:center; justify-content:center; }
 #btn-send:active { transform:translateY(3px); box-shadow:0 1px 0 #b96f0a; }
@@ -250,6 +251,57 @@ h3.sect { font-size:13px; letter-spacing:2px; text-transform:uppercase; color:#8
 .row { display:flex; gap:10px; }
 .row > * { flex:1; }
 .mt8 { margin-top:8px; } .mt16 { margin-top:16px; } .mt24 { margin-top:24px; }
+
+/* --- badge kanal room (WIFI/BLUETOOTH) --- */
+.badge-chan {
+  font-size:10px; font-weight:900; letter-spacing:1px; vertical-align:middle;
+  background:#2a3352; color:#5adfc9; border-radius:99px; padding:3px 9px; margin-left:6px;
+}
+
+/* --- RESPONSIF: skala fluid anti-overlap ---
+ * Prefix hard = 6 tile; tanpa penyesuaian, 6x52px + timer 74px melewati
+ * layar 320-360px. clamp() membuat tile menyusut proporsional, dan
+ * flex-wrap menjatuhkan timer ke baris kedua bila benar-benar sempit.
+ */
+#prefix-wrap { flex-wrap:wrap; justify-content:center; }
+#prefix-tiles { flex-wrap:wrap; justify-content:center; max-width:100%; }
+#prefix-tiles .tile {
+  width:clamp(30px, 10.5vw, 52px);
+  height:clamp(35px, 12vw, 60px);
+  font-size:clamp(17px, 6vw, 30px);
+  border-radius:clamp(8px, 2.6vw, 12px);
+}
+#timer-wrap { width:clamp(60px, 17vw, 74px); height:clamp(60px, 17vw, 74px); flex:0 0 auto; }
+#timer-wrap svg { width:100%; height:100%; }
+#timer-num { font-size:clamp(19px, 5.6vw, 24px); }
+#game-center { width:100%; max-width:600px; margin:0 auto; }
+#feed { max-width:600px; }
+#players-strip { max-width:620px; margin:0 auto; width:100%; }
+#scr-over .card, #scr-over .row { max-width:440px; width:100%; margin-left:auto; margin-right:auto; }
+.menu-btn-tile { display:inline-block; }
+
+/* layar pendek (hp kecil / 16:9 320x568): kecilkan logo & tombol, foot jadi statis */
+@media (max-height:660px) {
+  #menu-logo .tile { width:34px; height:39px; font-size:19px; }
+  #menu-logo2 .tile { width:42px; height:48px; font-size:25px; }
+  #menu-tag { margin:8px 0 14px; font-size:11px; }
+  #menu-btns { gap:9px; max-width:330px; }
+  .btn { padding:11px 15px; font-size:15px; border-radius:14px; }
+  .btn .sub { font-size:11px; }
+  #menu-foot { position:static; margin-top:16px; }
+  #scr-menu { justify-content:center; }
+  .avatar-big { width:64px; height:64px; font-size:30px; border-radius:18px; }
+  #over-title { font-size:24px; }
+  #pin-display { font-size:34px; letter-spacing:7px; }
+}
+/* layar sangat sempit (<=330px): rapatkan paddings */
+@media (max-width:330px) {
+  .screen { padding-left:14px; padding-right:14px; }
+  .pcard { min-width:96px; }
+  .pcard .pn { max-width:60px; }
+  #input-row .btn, #btn-send { width:50px; }
+}
+
 </style>
 </head>
 <body>
@@ -349,7 +401,7 @@ h3.sect { font-size:13px; letter-spacing:2px; text-transform:uppercase; color:#8
       <div id="prefix-wrap">
         <div id="prefix-tiles"></div>
         <div id="timer-wrap">
-          <svg width="74" height="74"><circle cx="37" cy="37" r="32" stroke="#2c3556" stroke-width="7" fill="none"/><circle id="timer-ring" cx="37" cy="37" r="32" stroke="#5adfc9" stroke-width="7" fill="none" stroke-linecap="round" stroke-dasharray="201" stroke-dashoffset="0"/></svg>
+          <svg viewBox="0 0 74 74"><circle cx="37" cy="37" r="32" stroke="#2c3556" stroke-width="7" fill="none"/><circle id="timer-ring" cx="37" cy="37" r="32" stroke="#5adfc9" stroke-width="7" fill="none" stroke-linecap="round" stroke-dasharray="201" stroke-dashoffset="0"/></svg>
           <div id="timer-num">15</div>
         </div>
       </div>
@@ -446,27 +498,33 @@ h3.sect { font-size:13px; letter-spacing:2px; text-transform:uppercase; color:#8
       <button class="iconbtn" data-back="1"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M15 5l-7 7 7 7"/></svg></button>
       <div class="h1">Online</div>
     </div>
+    <h3 class="sect" style="margin-top:0">Kanal Koneksi</h3>
+    <div class="seg" id="online-chan">
+      <button data-ch="wifi" class="on">WIFI / HOTSPOT</button>
+      <button data-ch="bt">BLUETOOTH</button>
+    </div>
     <div class="modesel">
       <button class="btn primary diffcard" id="on-create">
         <span class="grow">BUAT ROOM<span class="sub">Jadi tuan rumah &middot; bagikan PIN 6 digit ke teman</span></span>
       </button>
       <button class="btn teal diffcard" id="on-join">
-        <span class="grow">GABUNG ROOM<span class="sub">Cari room di WiFi yang sama, lalu masukkan PIN</span></span>
+        <span class="grow">GABUNG ROOM<span class="sub">Cari room, lalu masukkan PIN 6 digit</span></span>
       </button>
     </div>
-    <div class="card mt16"><div class="muted">Pastikan semua pemain terhubung ke <b style="color:#eef1fb">WiFi atau hotspot yang sama</b>. Room terdeteksi otomatis di jaringan yang sama.</div></div>
+    <div class="card mt16"><div class="muted" id="online-hint">Pastikan semua pemain terhubung ke <b style="color:#eef1fb">WiFi atau hotspot yang sama</b>. Room terdeteksi otomatis di jaringan yang sama.</div></div>
   </div>
 
   <!-- ============ HOST ROOM ============ -->
   <div class="screen" id="scr-host">
     <div class="topbar">
       <button class="iconbtn" id="host-exit"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M15 5l-7 7 7 7"/></svg></button>
-      <div style="flex:1"><div class="h1">Room Kamu</div><div class="muted" id="host-ip" style="font-size:11px"></div></div>
+      <div style="flex:1"><div class="h1">Room Kamu <span class="badge-chan" id="host-chan">WIFI</span></div><div class="muted" id="host-ip" style="font-size:11px"></div></div>
+      <button class="iconbtn" id="bt-visible" style="display:none" title="Buat perangkat terlihat"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#5adfc9" stroke-width="2"><path d="M7 7l10 10-5 5V2l5 5L7 17"/></svg></button>
     </div>
     <div class="card" style="text-align:center">
       <div class="muted">PIN Room — bagikan ke temanmu</div>
       <div id="pin-display">------</div>
-      <button class="btn" id="pin-copy" style="max-width:220px;margin:0 auto;padding:10px 16px;font-size:14px">Salin PIN + IP</button>
+      <button class="btn" id="pin-copy" style="max-width:220px;margin:0 auto;padding:10px 16px;font-size:14px">Salin PIN</button>
     </div>
     <h3 class="sect">Pemain (<span id="host-count">1</span>/13)</h3>
     <div id="room-players"></div>
@@ -489,17 +547,28 @@ h3.sect { font-size:13px; letter-spacing:2px; text-transform:uppercase; color:#8
   <div class="screen" id="scr-join">
     <div class="topbar">
       <button class="iconbtn" data-back="1"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M15 5l-7 7 7 7"/></svg></button>
-      <div class="h1">Gabung Room</div>
+      <div class="h1">Gabung Room <span class="muted" id="join-title-sub" style="font-size:12px;text-transform:none;letter-spacing:0">WiFi / Hotspot</span></div>
     </div>
-    <h3 class="sect">Room terdeteksi</h3>
-    <div class="roomlist" id="room-list"><div class="muted" id="room-list-empty">Mencari room di jaringan...</div></div>
-    <div class="card mt16">
-      <h3 class="sect" style="margin-top:0">Masuk Manual</h3>
-      <input id="join-ip" placeholder="IP host (contoh 192.168.43.1)" autocomplete="off" style="width:100%;border:2px solid #303a5f;background:#171d33;color:#eef1fb;border-radius:12px;padding:12px 14px;font-family:inherit;margin-bottom:10px;outline:none">
-      <input id="join-pin" placeholder="PIN 6 digit" inputmode="numeric" maxlength="6" autocomplete="off" style="width:100%;border:2px solid #303a5f;background:#171d33;color:#eef1fb;border-radius:12px;padding:12px 14px;font-family:inherit;letter-spacing:6px;font-weight:900;font-size:18px;outline:none;margin-bottom:10px">
-      <button class="btn primary" id="join-btn">Gabung</button>
+    <div class="card" style="margin-bottom:14px">
+      <h3 class="sect" style="margin-top:0">PIN Room</h3>
+      <input id="join-pin" placeholder="PIN 6 digit" inputmode="numeric" maxlength="6" autocomplete="off" style="width:100%;border:2px solid #303a5f;background:#171d33;color:#eef1fb;border-radius:12px;padding:12px 14px;font-family:inherit;letter-spacing:6px;font-weight:900;font-size:18px;outline:none">
     </div>
-    <div class="muted mt8">Tidak menemukan room? Minta host mengecek IP-nya di layar room.</div>
+    <div id="join-wifi-pane">
+      <h3 class="sect">Room terdeteksi</h3>
+      <div class="roomlist" id="room-list"><div class="muted" id="room-list-empty">Mencari room di jaringan...</div></div>
+      <div class="card mt16">
+        <h3 class="sect" style="margin-top:0">Masuk Manual</h3>
+        <input id="join-ip" placeholder="IP host (contoh 192.168.43.1)" autocomplete="off" style="width:100%;border:2px solid #303a5f;background:#171d33;color:#eef1fb;border-radius:12px;padding:12px 14px;font-family:inherit;margin-bottom:10px;outline:none">
+        <button class="btn primary" id="join-btn">Gabung</button>
+      </div>
+      <div class="muted mt8">Tidak menemukan room? Minta host mengecek IP-nya di layar room.</div>
+    </div>
+    <div id="join-bt-pane" style="display:none">
+      <h3 class="sect">Perangkat Terdekat <button class="iconbtn" id="bt-rescan" style="width:30px;height:30px;display:inline-flex;vertical-align:middle"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M21 12a9 9 0 1 1-3-6.7M21 4v5h-5"/></svg></button></h3>
+      <div class="muted" id="bt-status" style="margin-bottom:8px">memindai perangkat terdekat...</div>
+      <div class="roomlist" id="bt-devices"></div>
+      <div class="muted" id="bt-devices-empty">Belum ada perangkat ditemukan.<br>Host harus menekan <b>Buat Room</b> dan mengaktifkan perangkat terlihat (ikon Bluetooth di room-nya).</div>
+    </div>
   </div>
 
   <!-- ============ CLIENT ROOM ============ -->
