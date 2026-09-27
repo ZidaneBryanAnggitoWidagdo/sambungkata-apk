@@ -5,13 +5,18 @@
  * Aturan inti (permintaan desainer):
  *  - easy   : prefix = 1 huruf terakhir; 25 detik; ujung x/q/f otomatis
  *             diganti huruf sebelumnya; 1.000+ kata berujung x/q/f di kamus.
- *  - normal : prefix 1-3 huruf (boleh sub-sekuens dari 3 huruf terakhir,
- *             tidak selalu berdampingan); 15 detik; noise: awal mayoritas
- *             1-2 huruf, pertengahan mulai 3 huruf, akhir mayoritas 2-3.
- *  - hard   : prefix 1-6 huruf (sub-sekuens 6 huruf terakhir); 10 detik;
- *             giliran pertama pasti 1 huruf; noise awal condong 3-5,
- *             pertengahan 1 huruf jarang (umumnya 3-6); jika tidak ada
- *             prefix bagus 3-6, sistem boleh turun ke 1-2 huruf.
+ *  - normal : prefix 1-3 huruf; ATURAN SAMBUNG: huruf SUFFIX (huruf
+ *             terakhir kata sebelumnya) WAJIB ada di prefix; huruf-huruf
+ *             sebelum suffix hanyalah OPSIONAL (asal masih membentuk kata),
+ *             dan prioritas selalu blok akhiran kontigu (huruf sebelum
+ *             suffix + kombinasi huruf suffix); 15 detik; noise: awal
+ *             mayoritas 1-2 huruf, pertengahan mulai 3 huruf, akhir
+ *             mayoritas 2-3.
+ *  - hard   : prefix 1-6 huruf (berjangkar pada 6 huruf terakhir, huruf
+ *             akhiran WAJIB ada, sisanya opsional); 10 detik; giliran
+ *             pertama pasti 1 huruf; noise awal condong 3-5, pertengahan
+ *             1 huruf jarang (umumnya 3-6); jika tidak ada prefix bagus
+ *             3-6, sistem boleh turun ke 1-2 huruf.
  *  - Nyawa  : 3. Habis waktu -1 nyawa. Setiap salah ke-5 (kata tidak ada
  *             di kamus / tidak sesuai awalan / diulang) -1 nyawa.
  *  - Pemenang: pemain terakhir yang bertahan.
@@ -267,9 +272,6 @@
     }
 
     // normal / hard
-    var byLen = {};
-    function add(p) { (byLen[p.length] || (byLen[p.length] = [])).push(p); }
-
     if (!prevWord) {
       var w0 = pickWeights(mode, 0);
       var Ls;
@@ -287,13 +289,41 @@
       return null;
     }
 
+    /* ---- ATURAN SAMBUNG (revisi desainer) ----
+     * Huruf SUFFIX (huruf terakhir kata sebelumnya) WAJIB menjadi bagian
+     * prefix — prefix tidak boleh lagi melewatinya. Huruf-huruf sebelum
+     * suffix hanyalah OPSIONAL: dipakai asalkan kombinasi itu masih
+     * membentuk kata di kamus. PRIORITAS: blok akhiran kontigu — huruf
+     * sebelum suffix + kombinasi huruf suffix — selalu dipilih lebih dulu
+     * kalau masih sehat (ada kata lanjutan yang belum dipakai).
+     */
     var tail = prevWord.slice(-cfg.tail);
-    var subs = subsequences(tail);
-    for (var i = 0; i < subs.length; i++) {
-      var s = subs[i];
-      if (d.countPrefix(s) < cfg.minWords) continue;
-      if (!hasUnused(d, s, usedSet, 8)) continue;
-      add(s);
+    var suf = tail.charAt(tail.length - 1); // huruf suffix — WAJIB ada
+    var head = tail.slice(0, -1);           // huruf sebelum suffix — opsional
+
+    function viable(p) {
+      return d.countPrefix(p) >= cfg.minWords && hasUnused(d, p, usedSet, 8);
+    }
+
+    // byLen[L] = { first: blok kontigu (prioritas) | null, rest: alternatif acak }
+    var byLen = {};
+    var f1 = viable(suf) ? suf : null;
+    byLen[1] = { first: f1, rest: [] };
+
+    var parts = head.length ? subsequences(head) : [];
+    for (var L = 2; L <= cfg.maxLen; L++) {
+      if (L - 1 > head.length) break;
+      var contigPart = head.slice(-(L - 1)); // huruf2 tepat sebelum suffix
+      var first = null, rest = [];
+      var pc = contigPart + suf;
+      if (viable(pc)) first = pc;
+      for (var i = 0; i < parts.length; i++) {
+        var part = parts[i];
+        if (part.length !== L - 1 || part === contigPart) continue;
+        var p2 = part + suf;
+        if (viable(p2)) rest.push(p2);
+      }
+      byLen[L] = { first: first, rest: rest };
     }
 
     var wts = pickWeights(mode, turnIdx);
@@ -305,8 +335,10 @@
     var lo = lengthOrder(wts);
     for (var j = 0; j < lo.length; j++) if (lo[j] !== Lfirst) order.push(lo[j]);
     for (j = 0; j < order.length; j++) {
-      var arr = byLen[order[j]];
-      if (arr && arr.length) return { prefix: arr[(rnd() * arr.length) | 0] };
+      var slot = byLen[order[j]];
+      if (!slot) continue;
+      if (slot.first) return { prefix: slot.first }; // prioritas kontigu
+      if (slot.rest.length) return { prefix: slot.rest[(rnd() * slot.rest.length) | 0] };
     }
     return null; // jalan buntu
   };

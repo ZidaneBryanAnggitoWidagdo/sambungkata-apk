@@ -175,7 +175,7 @@ class MainActivity : Activity() {
     inner class Bridge {
 
         @JavascriptInterface
-        fun getVersion(): String = "1.1.1"
+        fun getVersion(): String = "1.2.0"
 
         @JavascriptInterface
         fun startServer(pin: String, roomName: String) {

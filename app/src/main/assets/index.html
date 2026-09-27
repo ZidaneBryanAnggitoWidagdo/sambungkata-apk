@@ -153,19 +153,45 @@ body {
 .fitem .fw { font-weight:800; text-transform:uppercase; letter-spacing:.5px; }
 .fitem.ok .fw { color:#5adfc9; } .fitem.bad .fw { color:#ff8091; }
 .fitem .fn { color:#8b95bd; } .fitem .fr { color:#8b95bd; font-size:11px; margin-left:auto; }
-#input-row { display:flex; gap:10px; margin-top:10px; }
-#word-input {
-  flex:1; min-width:0; border:2px solid #303a5f; background:#171d33; color:#eef1fb;
-  border-radius:14px; padding:14px 16px; font-size:18px; font-weight:700; font-family:inherit;
-  outline:none; text-transform:lowercase;
+/* --- input jawaban: KOTAK HURUF di atas label giliran ---
+ * Keyboard HP menutupi input bawah, maka ketikan direkam sebagai kotak
+ * huruf di area kosong di atas "Giliranmu! Sambung dari X", dan tombol
+ * kirim ikut naik — keduanya tidak mungkin tertutup keyboard.
+ * #word-input tetap ada sebagai input tersembunyi (opacity:0) yang
+ * menutupi area kotak supaya tap di sana langsung memunculkan keyboard.
+ */
+#typed-wrap { display:flex; gap:10px; align-items:stretch; width:100%; max-width:600px; min-height:56px; position:relative; margin-bottom:2px; }
+#typed-tiles {
+  flex:1; min-width:0; display:flex; align-items:center; justify-content:center; flex-wrap:wrap; gap:6px;
+  background:#171d33; border:2px dashed #303a5f; border-radius:14px; padding:8px 12px;
+  min-height:56px; transition:border-color .2s;
 }
-#word-input:focus { border-color:#f7a928; }
-#word-input.err { border-color:#ff5d6c; animation: shake .3s; }
+#typed-wrap.typing #typed-tiles { border-style:solid; border-color:#f7a928; }
+#typed-tiles .ph { color:#5f6b96; font-size:13px; font-weight:700; letter-spacing:.5px; user-select:none; }
+#typed-tiles .tb {
+  width:clamp(28px, 8.6vw, 36px); height:clamp(36px, 11vw, 44px); border-radius:clamp(7px, 2.2vw, 10px);
+  display:flex; align-items:center; justify-content:center;
+  background:linear-gradient(160deg,#3d4a75,#2c3556); color:#eef1fb; font-weight:900;
+  font-size:clamp(18px, 5.6vw, 24px); text-transform:uppercase; box-shadow:0 3px 0 #12172a;
+  animation: pop .15s ease;
+}
+#typed-tiles.ok { border-color:#2fae95; }
+#typed-tiles.ok .tb { background:linear-gradient(160deg,#41d6b9,#2fae95); color:#06392f; box-shadow:0 3px 0 #157c6d; }
+#typed-tiles.bad { border-color:#e45263; }
+#typed-tiles.bad .tb { background:linear-gradient(160deg,#ff7b88,#e45263); color:#4d0812; box-shadow:0 3px 0 #a12231; animation: shake .3s; }
 @keyframes shake { 0%,100%{transform:none;} 25%{transform:translateX(-6px);} 75%{transform:translateX(6px);} }
-#btn-send { flex:0 0 auto; width:56px; border:none; border-radius:14px; cursor:pointer;
+#btn-send { flex:0 0 auto; width:58px; border:none; border-radius:14px; cursor:pointer; z-index:2;
   background:linear-gradient(180deg,#ffbe4d,#f79e1d); color:#3d2600;
   box-shadow:0 4px 0 #b96f0a; display:flex; align-items:center; justify-content:center; }
 #btn-send:active { transform:translateY(3px); box-shadow:0 1px 0 #b96f0a; }
+#word-input { position:absolute; left:0; top:0; width:calc(100% - 68px); height:100%;
+  opacity:0; border:none; background:transparent; color:transparent; z-index:1;
+  font-size:16px; font-family:inherit; outline:none; text-transform:lowercase; }
+
+/* Keyboard terbuka (visualViewport menyusut): rapatkan konten & tampilkan
+ * bagian atas agar kotak huruf + tombol kirim selalu terlihat. */
+body.kb-open #game-center { justify-content:flex-start; gap:10px; padding-top:4px; }
+body.kb-open #feed { max-height:72px; }
 #lives-center { display:flex; gap:4px; }
 
 /* --- gameover --- */
@@ -299,7 +325,8 @@ h3.sect { font-size:13px; letter-spacing:2px; text-transform:uppercase; color:#8
   .screen { padding-left:14px; padding-right:14px; }
   .pcard { min-width:96px; }
   .pcard .pn { max-width:60px; }
-  #input-row .btn, #btn-send { width:50px; }
+  #btn-send { width:48px; }
+  #word-input { width:calc(100% - 58px); }
 }
 
 </style>
@@ -338,7 +365,7 @@ h3.sect { font-size:13px; letter-spacing:2px; text-transform:uppercase; color:#8
         <span class="grow">KREDIT &amp; DONASI<span class="sub">Dukungan pengembang</span></span>
       </button>
     </div>
-    <div id="menu-foot" class="muted">v<span id="appver">1.1.1</span> &middot; buatan <b style="color:#5adfc9">zdn_gg</b></div>
+    <div id="menu-foot" class="muted">v<span id="appver">1.2.0</span> &middot; buatan <b style="color:#5adfc9">zdn_gg</b></div>
   </div>
 
   <!-- ============ PILIH JENIS PERMAINAN ============ -->
@@ -397,6 +424,11 @@ h3.sect { font-size:13px; letter-spacing:2px; text-transform:uppercase; color:#8
     </div>
     <div id="players-strip"></div>
     <div id="game-center">
+      <div id="typed-wrap">
+        <div id="typed-tiles"><span class="ph">ketik kata di sini…</span></div>
+        <button id="btn-send" title="Kirim jawaban"><svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M3 11l18-8-8 18-2.5-7.5L3 11z"/></svg></button>
+        <input id="word-input" type="text" autocomplete="off" autocorrect="off" spellcheck="false" enterkeyhint="send">
+      </div>
       <div id="turn-label"></div>
       <div id="prefix-wrap">
         <div id="prefix-tiles"></div>
@@ -406,10 +438,6 @@ h3.sect { font-size:13px; letter-spacing:2px; text-transform:uppercase; color:#8
         </div>
       </div>
       <div id="feed"></div>
-    </div>
-    <div id="input-row">
-      <input id="word-input" type="text" autocomplete="off" autocorrect="off" spellcheck="false" placeholder="ketik kata...">
-      <button id="btn-send"><svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M3 11l18-8-8 18-2.5-7.5L3 11z"/></svg></button>
     </div>
   </div>
 

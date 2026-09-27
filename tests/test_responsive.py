@@ -106,16 +106,28 @@ def run_viewport(p, w, h):
     pg.wait_for_selector("#scr-game.on", timeout=8000)
     time.sleep(0.4)
     check_common(pg, tag, "game-hard")
-    ok(pg.evaluate(JS_OVERLAP, ["#prefix-wrap", "#input-row"]) is False,
-       f"[{tag}] prefix/timer tidak menumpuk input")
+    ok(pg.evaluate(JS_OVERLAP, ["#prefix-wrap", "#typed-wrap"]) is False,
+       f"[{tag}] prefix/timer tidak menumpuk kotak huruf")
+    ok(pg.evaluate(JS_OVERLAP, ["#typed-wrap", "#turn-label"]) is False,
+       f"[{tag}] kotak huruf tidak menumpuk label giliran")
     ok(pg.evaluate(JS_OVERLAP, ["#prefix-tiles", "#timer-wrap"]) is False,
        f"[{tag}] tile prefix tidak menumpuk timer")
-    input_box = pg.evaluate("""() => {
-        const r = document.getElementById('input-row').getBoundingClientRect();
-        return { bottom: r.bottom, vh: window.innerHeight, w: r.width, vw: window.innerWidth };
+    typed_box = pg.evaluate("""() => {
+        const r = document.getElementById('typed-wrap').getBoundingClientRect();
+        const b = document.getElementById('btn-send').getBoundingClientRect();
+        const inp = document.getElementById('word-input');
+        return { bottom: r.bottom, btnBottom: b.bottom, vh: window.innerHeight,
+                 w: r.width, vw: window.innerWidth,
+                 btnHit: (() => { const e = document.elementFromPoint(b.left + b.width/2, b.top + b.height/2); return e === document.getElementById('btn-send') || document.getElementById('btn-send').contains(e); })(),
+                 inpOnTiles: (() => { const t = document.getElementById('typed-tiles').getBoundingClientRect();
+                                      const ir = inp.getBoundingClientRect();
+                                      return ir.left <= t.left + 2 && ir.top <= t.top + 2 && ir.right >= t.right - 2; })() };
     }""")
-    ok(input_box["bottom"] <= input_box["vh"] + 2, f"[{tag}] input jawaban terlihat di dalam layar")
-    ok(input_box["w"] <= input_box["vw"], f"[{tag}] input tidak melebihi lebar layar")
+    ok(typed_box["bottom"] <= typed_box["vh"] + 2, f"[{tag}] kotak huruf terlihat di dalam layar")
+    ok(typed_box["btnBottom"] <= typed_box["vh"] + 2, f"[{tag}] tombol kirim terlihat di dalam layar")
+    ok(typed_box["w"] <= typed_box["vw"], f"[{tag}] kotak huruf tidak melebihi lebar layar")
+    ok(typed_box["btnHit"], f"[{tag}] tombol kirim tersentuh penuh (tidak tertutup)")
+    ok(typed_box["inpOnTiles"], f"[{tag}] input tersembunyi menutupi area kotak (tap = keyboard)")
     # strip pemain dapat di-scroll (13 pemain pun tetap usable)
     pg.evaluate("""() => {
         const strip = document.getElementById('players-strip');

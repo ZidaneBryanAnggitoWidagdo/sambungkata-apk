@@ -45,11 +45,17 @@ with sync_playwright() as p:
             word = pg.evaluate("""(p) => window.__DBG.dict.randomWordPrefix(p, window.__DBG.G.room.used, Math.random)""", state["prefix"])
             if word:
                 pg.fill("#word-input", word)
+                if _ == 3:
+                    # tangkap kotak huruf terisi (fitur baru) sebelum kirim
+                    time.sleep(0.3)
+                    pg.screenshot(path=f"{OUT}/game.png")
                 pg.click("#btn-send")
                 time.sleep(0.5)
+                if _ == 3:
+                    # kotak huruf hijau (jawaban benar)
+                    pg.screenshot(path=f"{OUT}/game-green.png")
         else:
             time.sleep(0.8)
-    pg.screenshot(path=f"{OUT}/game.png")
     pg.click("#g-exit"); time.sleep(0.3); pg.click("#cf-yes"); time.sleep(0.5)
 
     # kamusku: isi dengan beberapa kata biar tidak kosong

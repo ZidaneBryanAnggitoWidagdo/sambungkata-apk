@@ -123,6 +123,51 @@ section("Hard — fallback ketika 3-6 huruf tak tersedia");
   ok(fell === total, `fallback ke 1-2 huruf terjadi ${fell}/${total} kali`);
 }
 
+/* ---------- Aturan anchoring (revisi desainer) ---------- */
+section("Anchoring — huruf suffix WAJIB ada di prefix, kontigu diprioritaskan");
+{
+  // 1) Setiap prefix normal/hard HARUS berakhir dengan huruf terakhir kata sebelumnya
+  for (const mode of ["normal", "hard"]) {
+    const eng = new Engine.PrefixEngine(dict, mode, rng(777));
+    const used = new Set();
+    const sampleWords = ["sandal", "bilang", "mantap", "strategi", "kata", "sambung",
+      "nasional", "perpustakaan", "terminal", "program"];
+    for (let i = 0; i < 300; i++) {
+      const w = sampleWords[i % sampleWords.length];
+      const r = eng.next(w, 3 + (i % 20), used);
+      ok(r && r.prefix, `${mode}: kandidat ada utk '${w}'`);
+      if (!r) continue;
+      const suf = w.charAt(w.length - 1);
+      ok(r.prefix.charAt(r.prefix.length - 1) === suf,
+        `${mode}: prefix '${r.prefix}' berakhir dgn huruf suffix '${suf}' (dari '${w}')`);
+      ok(Engine.isSubseq(r.prefix, w.slice(-(mode === "normal" ? 3 : 6))),
+        `${mode}: prefix '${r.prefix}' masih sub-sekuens ekoran '${w}'`);
+    }
+  }
+
+  // 2) Prioritas kontigu: bila blok akhiran kontigu sehat, engine harus
+  //    mengembalikan PERSIS blok itu pada panjang yang sama.
+  const eng2 = new Engine.PrefixEngine(dict, "normal", rng(888));
+  const used2 = new Set();
+  // "sandal" tail "DAL": L=2 kontigu "AL" (harus dukungan kamus besar), L=3 "DAL"
+  ok(dict.countPrefix("al") >= 12 && dict.countPrefix("dal") >= 12,
+    "prasarat: al & dal sehat di kamus");
+  let hit2 = 0, hit3 = 0;
+  for (let i = 0; i < 300; i++) {
+    const r = eng2.next("sandal", 18 + (i % 20), used2); // fase akhir: 2-3 dominan
+    if (!r) continue;
+    if (r.prefix.length === 2) { eq(r.prefix, "al", "L=2 → kontigu 'al' (bukan 'dl')"); hit2++; }
+    if (r.prefix.length === 3) { eq(r.prefix, "dal", "L=3 → kontigu 'dal'"); hit3++; }
+  }
+  ok(hit2 > 50 && hit3 > 20, `kontigu terverifikasi sering muncul (L2=${hit2}, L3=${hit3})`);
+
+  // 3) Easy tetap: 1 huruf terakhir (suffix), x/q/f diganti huruf sebelumnya
+  const eng3 = new Engine.PrefixEngine(dict, "easy", rng(999));
+  eq(eng3.next("sandal", 5, new Set()).prefix, "l", "easy: sandal → 'l'");
+  eq(eng3.next("tarif", 5, new Set()).prefix, "i", "easy: tarif → 'i' (f diganti)");
+  eq(eng3.next("klaks", 5, new Set()).prefix, "s", "easy: klaks → 's' (s bukan banned)");
+}
+
 /* ---------- Anti-jalan-buntu: rantai panjang normal ---------- */
 section("Simulasi rantai 300 langkah — tidak boleh macet");
 {

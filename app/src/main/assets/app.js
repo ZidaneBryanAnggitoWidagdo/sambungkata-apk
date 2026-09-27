@@ -5,7 +5,7 @@
  * ============================================================= */
 "use strict";
 (function () {
-  var APP_VERSION = "1.1.1";
+  var APP_VERSION = "1.2.0";
   var ENGINE = window.Engine;
   var dict = null;
 
@@ -144,6 +144,76 @@
     }
     return out;
   }
+
+  /* ---------------- kotak huruf ketikan ----------------
+   * Ketikan pemain direkam sebagai kotak huruf di atas label giliran:
+   * ngetik → kotak muncul, hapus → kotak hilang, kirim → hijau (benar)
+   * / merah (salah). Input asli tersembunyi (opacity:0) menutupi area
+   * kotak, jadi tap di sana langsung memunculkan keyboard.
+   */
+  function renderTyped(state) {
+    var wrap = $("typed-tiles");
+    var inp = $("word-input");
+    if (!wrap || !inp) return;
+    if (Date.now() < _typedFreeze) return; // kotak berwarna sedang ditahan
+    var v = (inp.value || "").toLowerCase().replace(/[^a-z]/g, "");
+    var html = "";
+    for (var i = 0; i < v.length; i++) html += '<span class="tb">' + esc(v.charAt(i)) + '</span>';
+    var wait = inp.disabled;
+    if (!v.length) html = '<span class="ph">' + (wait ? "menunggu giliranmu…" : "ketik kata di sini…") + '</span>';
+    wrap.innerHTML = html;
+    if (state) {
+      wrap.classList.remove("ok", "bad"); void wrap.offsetWidth;
+      wrap.classList.add(state);
+    } else {
+      wrap.classList.remove("ok", "bad");
+    }
+    var tw = $("typed-wrap");
+    if (tw) tw.classList.toggle("typing", !!v.length);
+  }
+
+  function resetTyped() {
+    var inp = $("word-input");
+    if (inp) inp.value = "";
+    if (Date.now() >= _typedFreeze) renderTyped(null);
+  }
+
+  /* Freeze: kotak berwarna (hijau/merah) TAHAN tampil ±1 detik meski
+   * giliran langsung berganti — ketikan baru membatalkan freeze. */
+  var _typedFreeze = 0;
+  function flashTyped(state, word) {
+    var wrap = $("typed-tiles");
+    if (!wrap) return;
+    var v = (word || "").toLowerCase();
+    var html = "";
+    for (var i = 0; i < v.length; i++) html += '<span class="tb">' + esc(v.charAt(i)) + '</span>';
+    if (!v.length) html = '<span class="ph">…</span>';
+    wrap.innerHTML = html;
+    wrap.classList.remove("ok", "bad"); void wrap.offsetWidth; wrap.classList.add(state);
+    _typedFreeze = Date.now() + 1000;
+    setTimeout(function () { _typedFreeze = 0; renderTyped(null); }, 1000);
+  }
+
+  /* ---------------- deteksi keyboard (IME) ----------------
+   * Saat keyboard terbuka visualViewport menyusut — tandai body.kb-open
+   * supaya CSS merapatkan konten game ke atas dan kotak huruf + tombol
+   * kirim tidak tertutup keyboard di layar kecil.
+   */
+  var vvMaxH = 0;
+  function kbCheck() {
+    var vv = window.visualViewport;
+    var h = vv ? vv.height : window.innerHeight;
+    if (h > vvMaxH) vvMaxH = h;
+    var open = vvMaxH > 0 && h < vvMaxH * 0.72;
+    document.body.classList.toggle("kb-open", open);
+  }
+  if (window.visualViewport) {
+    window.visualViewport.addEventListener("resize", kbCheck);
+    window.visualViewport.addEventListener("scroll", kbCheck);
+  } else {
+    window.addEventListener("resize", kbCheck);
+  }
+  kbCheck(); // baseline tinggi viewport (penting utk deteksi pertama)
   function buildBg() {
     var bg = $("bg");
     var letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
@@ -241,7 +311,7 @@
     var self = this;
     $("g-mode").textContent = this.mode.toUpperCase() + (this.kind === "sp" ? " · VS BOT" : " · SOLO");
     $("feed").innerHTML = "";
-    $("word-input").value = "";
+    resetTyped();
     show("game");
     this.room.start(Date.now());
     this.ticker = setInterval(function () {
@@ -292,8 +362,6 @@
         var p = this.room.byId[ev.playerId];
         feedItem(ev, false, (ev.counted ? ((p ? p.wrong : 0) + "/5 salah") : REASON_TXT[ev.reason]));
         if (ev.playerId === "ME") {
-          var inp = $("word-input");
-          inp.classList.remove("err"); void inp.offsetWidth; inp.classList.add("err");
           toast(ev.reason === "jalan_buntu" ? REASON_TXT.jalan_buntu : "Ditolak: " + REASON_TXT[ev.reason] || ev.reason);
         }
         this.renderPlayers();
@@ -325,7 +393,8 @@
       ? "Giliranmu! Sambung dari <b>" + esc(this.room.prefix.toUpperCase()) + "</b>"
       : "<b>" + esc(p ? p.name : "?") + "</b> sedang berpikir...";
     $("word-input").disabled = !mine;
-    if (mine) { $("word-input").value = ""; $("word-input").focus(); }
+    resetTyped();
+    if (mine) $("word-input").focus();
     this.updateTimer();
   };
 
@@ -417,7 +486,8 @@
       var before = uniqueWordCount();
       var res = G.room.submit("ME", w, Date.now());
       if (uniqueWordCount() > before) G._newWords++;
-      if (res.ok) inp.value = "";
+      if (res.ok) { inp.value = ""; flashTyped("ok", res.word); }
+      else flashTyped("bad", res.word || w);
       inp.focus();
       return;
     }
@@ -427,7 +497,8 @@
       var cur = Host.room.currentPlayer();
       if (!cur || cur.id !== "H") return;
       var res2 = Host.room.submit("H", w, Date.now());
-      if (res2.ok) inp.value = "";
+      if (res2.ok) { inp.value = ""; flashTyped("ok", res2.word); }
+      else flashTyped("bad", res2.word || w);
       inp.focus();
       return;
     }
@@ -725,7 +796,8 @@
         ? "Giliranmu! Sambung dari <b>" + esc(this.room.prefix.toUpperCase()) + "</b>"
         : "<b>" + esc(p ? p.name : "?") + "</b> sedang berpikir...";
       $("word-input").disabled = !mine;
-      if (mine) { $("word-input").value = ""; $("word-input").focus(); }
+      resetTyped();
+      if (mine) $("word-input").focus();
       this.renderGamePlayers();
     },
     renderGamePlayers: function () {
@@ -891,7 +963,8 @@
             ? "Giliranmu! Sambung dari <b>" + esc(d.prefix.toUpperCase()) + "</b>"
             : "<b>" + esc(d.playerName || "?") + "</b> sedang berpikir...";
           $("word-input").disabled = !mine;
-          if (mine) { $("word-input").value = ""; $("word-input").focus(); }
+          resetTyped();
+          if (mine) $("word-input").focus();
           self.renderGamePlayers();
           break;
         case "answer":
@@ -902,6 +975,8 @@
             var wi = $("word-input");
             if (wi) { wi.value = ""; wi.focus(); }
           }
+          /* kotak hurufku berubah hijau (benar) / merah (salah) */
+          if (d.playerId === self.myId) flashTyped(d.ok ? "ok" : "bad", d.word);
           break;
         case "timeout":
           feedItem({ playerId: d.playerId, playerName: self.nameOf(d.playerId), word: null }, false, "waktu habis");
@@ -1171,7 +1246,11 @@
           function () { toast("Nomor GoPay: " + num); });
       } else toast("Nomor GoPay: " + num);
     };
-    // game offline
+    // game offline — kotak huruf
+    $("word-input").addEventListener("input", function () {
+      _typedFreeze = 0; // ketikan baru membatalkan tahanan warna
+      renderTyped(null);
+    });
     $("btn-send").onclick = submitMyWord;
     $("word-input").addEventListener("keydown", function (e) {
       if (e.key === "Enter") { e.preventDefault(); submitMyWord(); }
@@ -1389,7 +1468,9 @@
     get Client() { return Client; },
     Engine: ENGINE,
     startOffline: startOffline,
-    saveWord: saveWord
+    saveWord: saveWord,
+    kbCheck: kbCheck,
+    renderTyped: renderTyped
   };
 
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", init);
