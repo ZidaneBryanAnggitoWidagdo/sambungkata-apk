@@ -1,0 +1,529 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>Sambung Kata</title>
+<style>
+/* ============ SAMBUNG KATA — tema "Papan Huruf" ============ */
+* { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+html, body { height:100%; overflow:hidden; }
+body {
+  font-family: Roboto, "Noto Sans", system-ui, sans-serif;
+  background: radial-gradient(120% 90% at 50% 0%, #1c2440 0%, #131829 55%, #0d1120 100%);
+  color:#eef1fb; user-select:none; -webkit-user-select:none;
+  touch-action: manipulation;
+}
+#app { position:fixed; inset:0; overflow:hidden; }
+
+/* --- background tile mengambang --- */
+#bg { position:absolute; inset:0; overflow:hidden; z-index:0; pointer-events:none; opacity:.55; }
+#bg .ft {
+  position:absolute; display:flex; align-items:center; justify-content:center;
+  font-weight:900; color:#2c3860; border-radius:14px;
+  background:linear-gradient(160deg,#232c4d,#1a2138);
+  box-shadow:0 6px 0 #141a2e, inset 0 1px 0 #2e3a63;
+  animation: drift linear infinite;
+}
+@keyframes drift {
+  from { transform: translateY(105vh) rotate(-8deg); }
+  to   { transform: translateY(-20vh) rotate(10deg); }
+}
+
+/* --- layar --- */
+.screen {
+  position:absolute; inset:0; z-index:2; display:none; flex-direction:column;
+  padding: 18px 20px calc(18px + env(safe-area-inset-bottom));
+  overflow-y:auto; overflow-x:hidden;
+}
+.screen.on { display:flex; animation: slidein .28s ease; }
+@keyframes slidein { from { opacity:0; transform:translateX(26px);} to { opacity:1; transform:none;} }
+
+/* --- tile huruf --- */
+.tile {
+  display:inline-flex; align-items:center; justify-content:center;
+  background:linear-gradient(165deg,#ffd88a,#f7a928);
+  color:#3d2600; border-radius:12px; font-weight:900;
+  box-shadow:0 5px 0 #b96f0a, inset 0 1px 0 #ffe9bd;
+  text-transform:uppercase;
+}
+.tile.teal { background:linear-gradient(165deg,#8ff0e2,#2fc4ad); box-shadow:0 5px 0 #157c6d, inset 0 1px 0 #c8fff6; color:#03332b; }
+.tile.red   { background:linear-gradient(165deg,#ffb1b8,#f4576b); box-shadow:0 5px 0 #a91f33, inset 0 1px 0 #ffd4d9; color:#4a0410; }
+.tile.dim   { background:linear-gradient(165deg,#3a4570,#2a3252); box-shadow:0 5px 0 #171d33, inset 0 1px 0 #4a567f; color:#aeb9e6; }
+.logo-row { display:flex; gap:8px; justify-content:center; }
+
+/* --- tombol --- */
+.btn {
+  display:flex; align-items:center; gap:12px; width:100%;
+  border:none; border-radius:16px; cursor:pointer;
+  font-family:inherit; font-weight:800; font-size:17px; color:#eef1fb;
+  background:linear-gradient(180deg,#2b3557,#232b47);
+  box-shadow:0 5px 0 #161c30, inset 0 1px 0 #3d4a75;
+  padding:15px 18px; transition:transform .06s, box-shadow .06s;
+}
+.btn:active { transform:translateY(4px); box-shadow:0 1px 0 #161c30, inset 0 1px 0 #3d4a75; }
+.btn.primary { background:linear-gradient(180deg,#ffbe4d,#f79e1d); color:#3d2600; box-shadow:0 5px 0 #b96f0a, inset 0 1px 0 #ffe9bd; }
+.btn.primary:active { box-shadow:0 1px 0 #b96f0a, inset 0 1px 0 #ffe9bd; }
+.btn.teal { background:linear-gradient(180deg,#5adfc9,#26b8a1); color:#03332b; box-shadow:0 5px 0 #157c6d, inset 0 1px 0 #c8fff6; }
+.btn.teal:active { box-shadow:0 1px 0 #157c6d, inset 0 1px 0 #c8fff6; }
+.btn.danger { background:linear-gradient(180deg,#f4576b,#d2334a); color:#fff; box-shadow:0 5px 0 #8f1626, inset 0 1px 0 #ff9aa6; }
+.btn:disabled { filter:grayscale(.6) brightness(.7); pointer-events:none; }
+.btn svg { flex:0 0 auto; }
+.btn .sub { display:block; font-size:12px; font-weight:500; opacity:.75; margin-top:2px; }
+.btn .grow { flex:1; text-align:left; }
+
+/* --- umum --- */
+.h1 { font-size:26px; font-weight:900; letter-spacing:.5px; }
+.h2 { font-size:16px; font-weight:800; color:#aab4dd; text-transform:uppercase; letter-spacing:2px; }
+.muted { color:#8b95bd; font-size:13px; line-height:1.55; }
+.topbar { display:flex; align-items:center; gap:10px; margin-bottom:14px; }
+.iconbtn {
+  width:42px; height:42px; border:none; border-radius:12px; cursor:pointer;
+  background:linear-gradient(180deg,#2b3557,#232b47); color:#cdd6f5;
+  box-shadow:0 4px 0 #161c30, inset 0 1px 0 #3d4a75;
+  display:flex; align-items:center; justify-content:center; flex:0 0 auto;
+}
+.iconbtn:active { transform:translateY(3px); box-shadow:0 1px 0 #161c30; }
+.card {
+  background:linear-gradient(180deg,#232b47,#1c2339);
+  border:1px solid #303a5f; border-radius:18px; padding:16px;
+  box-shadow:0 6px 0 #12172a;
+}
+.divider { height:1px; background:#2c3556; margin:14px 0; }
+
+/* --- loading --- */
+#scr-load { align-items:center; justify-content:center; gap:26px; }
+#load-bar { width:180px; height:8px; border-radius:99px; background:#232b47; overflow:hidden; }
+#load-fill { height:100%; width:0%; border-radius:99px; background:linear-gradient(90deg,#f7a928,#ffcf70); transition:width .2s; }
+
+/* --- menu --- */
+#scr-menu { align-items:center; justify-content:center; gap:0; }
+#menu-logo { margin-bottom:8px; }
+#menu-logo .tile { width:46px; height:52px; font-size:26px; }
+#menu-logo2 .tile { width:58px; height:66px; font-size:34px; }
+#menu-tag { color:#8b95bd; font-size:13px; margin:14px 0 30px; letter-spacing:2px; text-transform:uppercase; font-weight:700;}
+#menu-btns { width:100%; max-width:360px; display:flex; flex-direction:column; gap:14px; }
+#menu-foot { position:absolute; bottom:16px; left:0; right:0; text-align:center; }
+
+/* --- pilih mode --- */
+.modesel { display:flex; flex-direction:column; gap:14px; margin-top:6px; }
+.diffcard { text-align:left; }
+.diffcard .big { font-size:19px; font-weight:900; display:flex; align-items:center; gap:10px; }
+.diffcard .meta { display:flex; gap:8px; margin-top:8px; flex-wrap:wrap; }
+.chip { font-size:11px; font-weight:800; padding:4px 10px; border-radius:99px; background:#2a3352; color:#aab4dd; letter-spacing:.5px;}
+
+/* --- layar game --- */
+#scr-game { padding:14px 16px calc(12px + env(safe-area-inset-bottom)); }
+#players-strip { display:flex; gap:8px; overflow-x:auto; padding:2px; scrollbar-width:none; }
+#players-strip::-webkit-scrollbar { display:none; }
+.pcard {
+  flex:0 0 auto; display:flex; align-items:center; gap:8px;
+  background:#1e2540; border:1.5px solid #2c3556; border-radius:14px; padding:7px 10px;
+  transition: border-color .2s, background .2s; min-width: 108px;
+}
+.pcard.active { border-color:#f7a928; background:#2a2b45; box-shadow:0 0 14px rgba(247,169,40,.25); }
+.pcard.dead { opacity:.38; filter:grayscale(1); }
+.pcard .av {
+  width:34px; height:34px; border-radius:10px; display:flex; align-items:center; justify-content:center;
+  font-weight:900; font-size:16px; background:linear-gradient(160deg,#3d4a75,#2c3556); color:#ffd88a;
+  text-transform:uppercase;
+}
+.pcard .pn { font-size:12px; font-weight:700; max-width:74px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.lives { display:flex; gap:2px; margin-top:2px; }
+.lives svg { width:13px; height:13px; }
+.wrongdots { display:flex; gap:3px; margin-left:2px; }
+.wrongdots i { width:6px; height:6px; border-radius:99px; background:#ff5d6c; display:block; opacity:.85; }
+
+#game-center { flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:18px; min-height:0; }
+#prefix-wrap { display:flex; align-items:center; gap:14px; }
+#prefix-tiles { display:flex; gap:7px; }
+#prefix-tiles .tile { width:52px; height:60px; font-size:30px; }
+#timer-wrap { position:relative; width:74px; height:74px; flex:0 0 auto; }
+#timer-wrap svg { transform:rotate(-90deg); }
+#timer-num { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-weight:900; font-size:24px; }
+#turn-label { font-size:14px; color:#aab4dd; font-weight:700; }
+#turn-label b { color:#ffd88a; }
+#feed { width:100%; max-width:520px; display:flex; flex-direction:column; gap:6px; max-height:170px; overflow:hidden; }
+.fitem {
+  display:flex; gap:8px; align-items:center; background:#1c2339; border-radius:12px;
+  padding:8px 12px; font-size:13px; border:1px solid #28304f; animation: pop .18s ease;
+}
+@keyframes pop { from { transform:scale(.96); opacity:0;} to { transform:none; opacity:1;} }
+.fitem .fw { font-weight:800; text-transform:uppercase; letter-spacing:.5px; }
+.fitem.ok .fw { color:#5adfc9; } .fitem.bad .fw { color:#ff8091; }
+.fitem .fn { color:#8b95bd; } .fitem .fr { color:#8b95bd; font-size:11px; margin-left:auto; }
+#input-row { display:flex; gap:10px; margin-top:10px; }
+#word-input {
+  flex:1; border:2px solid #303a5f; background:#171d33; color:#eef1fb;
+  border-radius:14px; padding:14px 16px; font-size:18px; font-weight:700; font-family:inherit;
+  outline:none; text-transform:lowercase;
+}
+#word-input:focus { border-color:#f7a928; }
+#word-input.err { border-color:#ff5d6c; animation: shake .3s; }
+@keyframes shake { 0%,100%{transform:none;} 25%{transform:translateX(-6px);} 75%{transform:translateX(6px);} }
+#btn-send { width:56px; border:none; border-radius:14px; cursor:pointer;
+  background:linear-gradient(180deg,#ffbe4d,#f79e1d); color:#3d2600;
+  box-shadow:0 4px 0 #b96f0a; display:flex; align-items:center; justify-content:center; }
+#btn-send:active { transform:translateY(3px); box-shadow:0 1px 0 #b96f0a; }
+#lives-center { display:flex; gap:4px; }
+
+/* --- gameover --- */
+#scr-over { align-items:center; justify-content:center; gap:18px; text-align:center; }
+#over-title { font-size:30px; font-weight:900; }
+#over-stats { width:100%; max-width:420px; text-align:left; }
+.statrow { display:flex; justify-content:space-between; padding:10px 4px; border-bottom:1px solid #2c3556; font-size:14px; }
+.statrow b { color:#ffd88a; }
+
+/* --- kamusku / profil / kredit --- */
+#kamus-count { display:flex; align-items:center; gap:14px; margin-bottom:14px; }
+#kamus-badge { min-width:64px; height:64px; border-radius:16px; display:flex; flex-direction:column; align-items:center; justify-content:center;
+  background:linear-gradient(165deg,#ffd88a,#f7a928); color:#3d2600; box-shadow:0 5px 0 #b96f0a; }
+#kamus-badge b { font-size:20px; font-weight:900; } #kamus-badge span { font-size:9px; font-weight:800; letter-spacing:1px; }
+#kamus-list { flex:1; overflow-y:auto; display:flex; flex-direction:column; gap:6px; min-height:0; }
+.krow { display:flex; align-items:center; gap:10px; background:#1c2339; border:1px solid #28304f; border-radius:12px; padding:10px 14px; }
+.krow .kw { font-weight:800; text-transform:uppercase; letter-spacing:.5px; flex:1; }
+.krow .kc { font-size:11px; color:#8b95bd; }
+#kamus-search { width:100%; border:2px solid #303a5f; background:#171d33; color:#eef1fb; border-radius:14px;
+  padding:12px 16px; font-size:15px; font-family:inherit; outline:none; margin-bottom:12px; }
+.title-ladder { display:flex; flex-direction:column; gap:6px; margin-top:4px; }
+.trow { display:flex; align-items:center; gap:10px; font-size:13px; color:#aab4dd; }
+.trow .tdot { width:9px; height:9px; border-radius:99px; background:#2c3556; }
+.trow.reached .tdot { background:#5adfc9; box-shadow:0 0 8px rgba(90,223,201,.6); }
+.trow.reached { color:#eef1fb; font-weight:700; }
+
+.avatar-big { width:84px; height:84px; border-radius:22px; display:flex; align-items:center; justify-content:center;
+  font-size:38px; font-weight:900; color:#3d2600; background:linear-gradient(165deg,#8ff0e2,#2fc4ad);
+  box-shadow:0 6px 0 #157c6d; text-transform:uppercase; }
+#name-input { width:100%; border:2px solid #303a5f; background:#171d33; color:#eef1fb; border-radius:14px;
+  padding:12px 16px; font-size:16px; font-weight:700; font-family:inherit; outline:none; }
+.stats-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+.stat-cell { background:#1c2339; border:1px solid #28304f; border-radius:14px; padding:14px; text-align:center; }
+.stat-cell b { font-size:22px; font-weight:900; color:#ffd88a; display:block; }
+.stat-cell span { font-size:11px; color:#8b95bd; letter-spacing:1px; text-transform:uppercase; font-weight:700; }
+
+.donate-card { text-align:center; }
+#gopay-num { font-size:24px; font-weight:900; letter-spacing:2px; color:#5adfc9; margin:10px 0; }
+
+/* --- online --- */
+#scr-online { align-items:center; justify-content:center; }
+#pin-display { font-size:44px; font-weight:900; letter-spacing:10px; color:#ffd88a; text-align:center; margin:8px 0 2px; }
+.roomlist { display:flex; flex-direction:column; gap:8px; max-height:200px; overflow-y:auto; }
+.roomrow { display:flex; align-items:center; gap:10px; background:#1c2339; border:1px solid #28304f; border-radius:12px; padding:12px 14px; cursor:pointer; }
+.roomrow:active { border-color:#f7a928; }
+.roomrow .rn { font-weight:700; flex:1; }
+.roomrow .ri { font-size:11px; color:#8b95bd; }
+#room-players { display:flex; flex-direction:column; gap:8px; max-height:220px; overflow-y:auto; }
+.rprow { display:flex; align-items:center; gap:10px; background:#1c2339; border:1px solid #28304f; border-radius:12px; padding:10px 12px; }
+.rprow .rpname { font-weight:700; flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.rprow.host { border-color:#f7a928; }
+.badge-host { font-size:10px; font-weight:900; background:#f7a928; color:#3d2600; padding:3px 8px; border-radius:99px; }
+#chat-box { flex:1; overflow-y:auto; display:flex; flex-direction:column; gap:6px; min-height:120px; }
+.cmsg { background:#1c2339; border-radius:12px; padding:8px 12px; font-size:13px; border:1px solid #28304f; max-width:85%; }
+.cmsg .cn { color:#5adfc9; font-weight:800; font-size:11px; }
+.cmsg.mine { align-self:flex-end; background:#233042; }
+#chat-row { display:flex; gap:8px; margin-top:8px; }
+#chat-input { flex:1; border:2px solid #303a5f; background:#171d33; color:#eef1fb; border-radius:12px; padding:10px 14px; font-size:14px; font-family:inherit; outline:none; }
+.seg { display:flex; gap:8px; }
+.seg button { flex:1; border:none; border-radius:12px; padding:11px 0; font-family:inherit; font-weight:800; font-size:13px;
+  background:#1c2339; color:#8b95bd; box-shadow:0 3px 0 #12172a; cursor:pointer; }
+.seg button.on { background:linear-gradient(180deg,#ffbe4d,#f79e1d); color:#3d2600; box-shadow:0 3px 0 #b96f0a; }
+
+/* --- overlay banned/kicked --- */
+#overlay { position:absolute; inset:0; z-index:50; display:none; align-items:center; justify-content:center;
+  background:rgba(9,12,22,.88); backdrop-filter:blur(3px); padding:24px; }
+#overlay.on { display:flex; }
+#overlay .card { max-width:360px; width:100%; text-align:center; }
+#ban-count { font-size:40px; font-weight:900; color:#ff8091; margin:8px 0; }
+
+/* --- toast & modal --- */
+#toast { position:fixed; left:50%; bottom:calc(30px + env(safe-area-inset-bottom)); transform:translateX(-50%) translateY(20px);
+  background:#2b3557; color:#eef1fb; padding:11px 20px; border-radius:14px; font-size:14px; font-weight:700;
+  box-shadow:0 6px 20px rgba(0,0,0,.45); opacity:0; pointer-events:none; transition:all .25s; z-index:90;
+  border:1px solid #3d4a75; max-width:86vw; text-align:center; }
+#toast.on { opacity:1; transform:translateX(-50%) translateY(0); }
+#modal-root { position:fixed; inset:0; z-index:80; display:none; align-items:center; justify-content:center; background:rgba(9,12,22,.7); padding:24px; }
+#modal-root.on { display:flex; }
+#modal-root .card { width:100%; max-width:360px; }
+textarea:focus, input:focus { outline:none; }
+
+h3.sect { font-size:13px; letter-spacing:2px; text-transform:uppercase; color:#8b95bd; margin:16px 0 8px; font-weight:800; }
+.row { display:flex; gap:10px; }
+.row > * { flex:1; }
+.mt8 { margin-top:8px; } .mt16 { margin-top:16px; } .mt24 { margin-top:24px; }
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="bg"></div>
+
+  <!-- ============ LOADING ============ -->
+  <div class="screen" id="scr-load">
+    <div class="logo-row" id="load-logo"></div>
+    <div id="load-bar"><div id="load-fill"></div></div>
+    <div class="muted" id="load-text">Memuat kamus...</div>
+  </div>
+
+  <!-- ============ MENU UTAMA ============ -->
+  <div class="screen" id="scr-menu">
+    <div id="menu-logo"><div class="logo-row" id="logo-row1"></div></div>
+    <div id="menu-logo2"><div class="logo-row" id="logo-row2"></div></div>
+    <div id="menu-tag">Rantai Kata &middot; KBBI</div>
+    <div id="menu-btns">
+      <button class="btn primary" id="m-play">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5.5v13c0 .8.9 1.3 1.6.9l10-6.5c.6-.4.6-1.4 0-1.8l-10-6.5c-.7-.4-1.6.1-1.6.9z"/></svg>
+        <span class="grow">BERMAIN<span class="sub">Singleplayer, Main Sendiri, atau Online</span></span>
+      </button>
+      <button class="btn" id="m-kamus">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20V4a2 2 0 0 0-2-2H6.5A2.5 2.5 0 0 0 4 4.5v15z"/><path d="M4 19.5A2.5 2.5 0 0 0 6.5 22H20v-5"/></svg>
+        <span class="grow">KAMUSKU<span class="sub">Koleksi kata hasil permainanmu</span></span>
+      </button>
+      <button class="btn" id="m-profil">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.6-6.5 8-6.5s8 2.5 8 6.5"/></svg>
+        <span class="grow">PROFIL<span class="sub" id="m-profil-name">guest</span></span>
+      </button>
+      <button class="btn" id="m-kredit">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 8h.01M11 12h1v5h1"/></svg>
+        <span class="grow">KREDIT &amp; DONASI<span class="sub">Dukungan pengembang</span></span>
+      </button>
+    </div>
+    <div id="menu-foot" class="muted">v<span id="appver">1.0.0</span> &middot; buatan <b style="color:#5adfc9">zdn_gg</b></div>
+  </div>
+
+  <!-- ============ PILIH JENIS PERMAINAN ============ -->
+  <div class="screen" id="scr-play">
+    <div class="topbar">
+      <button class="iconbtn" data-back="1"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M15 5l-7 7 7 7"/></svg></button>
+      <div class="h1">Pilih Cara Main</div>
+    </div>
+    <div class="modesel">
+      <button class="btn diffcard" id="p-sp">
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="9" height="10" rx="2"/><rect x="14" y="7" width="8" height="10" rx="2" stroke-dasharray="3 2"/></svg>
+        <span class="grow">SINGLEPLAYER<span class="sub">Lawan bot tak terkalahkan. Bertahan selama mungkin!</span></span>
+      </button>
+      <button class="btn diffcard" id="p-solo">
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg>
+        <span class="grow">MAIN SENDIRI<span class="sub">Monolog santai dengan dirimu sendiri</span></span>
+      </button>
+      <button class="btn diffcard teal" id="p-online">
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="5" r="2.5"/><circle cx="5" cy="17" r="2.5"/><circle cx="19" cy="17" r="2.5"/><path d="M12 7.5L6.5 15M12 7.5l5.5 7.5M7.5 17h9"/></svg>
+        <span class="grow">ONLINE<span class="sub">Buat room atau gabung pakai PIN 6 digit (max 13 pemain)</span></span>
+      </button>
+    </div>
+  </div>
+
+  <!-- ============ PILIH KESULITAN ============ -->
+  <div class="screen" id="scr-diff">
+    <div class="topbar">
+      <button class="iconbtn" data-back="1"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M15 5l-7 7 7 7"/></svg></button>
+      <div class="h1">Pilih Kesulitan</div>
+    </div>
+    <div class="modesel" id="diff-list">
+      <button class="btn diffcard" data-diff="easy">
+        <span class="grow"><span class="big"><span class="tile" style="width:30px;height:30px;font-size:15px">E</span>EASY</span>
+        <span class="sub">25 detik &middot; prefix 1 huruf &middot; ujung x/q/f otomatis diganti huruf sebelumnya</span></span>
+      </button>
+      <button class="btn diffcard" data-diff="normal">
+        <span class="grow"><span class="big"><span class="tile teal" style="width:30px;height:30px;font-size:15px">N</span>NORMAL</span>
+        <span class="sub">15 detik &middot; prefix 1-3 huruf dari akhir kata &middot; makin lama makin sulit</span></span>
+      </button>
+      <button class="btn diffcard" data-diff="hard">
+        <span class="grow"><span class="big"><span class="tile red" style="width:30px;height:30px;font-size:15px">H</span>HARD</span>
+        <span class="sub">10 detik &middot; prefix hingga 6 huruf &middot; untuk sang ahli kata</span></span>
+      </button>
+    </div>
+  </div>
+
+  <!-- ============ GAME ============ -->
+  <div class="screen" id="scr-game">
+    <div class="topbar" style="margin-bottom:8px">
+      <button class="iconbtn" id="g-exit"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M15 5l-7 7 7 7"/></svg></button>
+      <div style="flex:1">
+        <div class="h2" id="g-mode" style="margin:0">NORMAL</div>
+        <div class="muted" id="g-sub" style="font-size:11px">giliran 1</div>
+      </div>
+      <div id="lives-center"></div>
+    </div>
+    <div id="players-strip"></div>
+    <div id="game-center">
+      <div id="turn-label"></div>
+      <div id="prefix-wrap">
+        <div id="prefix-tiles"></div>
+        <div id="timer-wrap">
+          <svg width="74" height="74"><circle cx="37" cy="37" r="32" stroke="#2c3556" stroke-width="7" fill="none"/><circle id="timer-ring" cx="37" cy="37" r="32" stroke="#5adfc9" stroke-width="7" fill="none" stroke-linecap="round" stroke-dasharray="201" stroke-dashoffset="0"/></svg>
+          <div id="timer-num">15</div>
+        </div>
+      </div>
+      <div id="feed"></div>
+    </div>
+    <div id="input-row">
+      <input id="word-input" type="text" autocomplete="off" autocorrect="off" spellcheck="false" placeholder="ketik kata...">
+      <button id="btn-send"><svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M3 11l18-8-8 18-2.5-7.5L3 11z"/></svg></button>
+    </div>
+  </div>
+
+  <!-- ============ GAMEOVER ============ -->
+  <div class="screen" id="scr-over">
+    <div class="logo-row" id="over-tiles"></div>
+    <div id="over-title">Permainan Selesai</div>
+    <div class="muted" id="over-sub"></div>
+    <div class="card" id="over-stats"></div>
+    <div class="row" style="max-width:420px;width:100%">
+      <button class="btn primary" id="over-again">Main Lagi</button>
+      <button class="btn" id="over-menu">Menu</button>
+    </div>
+  </div>
+
+  <!-- ============ KAMUSKU ============ -->
+  <div class="screen" id="scr-kamus">
+    <div class="topbar">
+      <button class="iconbtn" data-back="1"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M15 5l-7 7 7 7"/></svg></button>
+      <div class="h1">Kamusku</div>
+    </div>
+    <div id="kamus-count">
+      <div id="kamus-badge"><b id="kamus-total">0</b><span>KATA</span></div>
+      <div style="flex:1">
+        <div style="font-weight:900;font-size:16px" id="kamus-title">Gelar: Pemula Kata</div>
+        <div class="muted" id="kamus-next"></div>
+      </div>
+    </div>
+    <input id="kamus-search" type="text" placeholder="cari kata..." autocomplete="off">
+    <div id="kamus-list"></div>
+    <h3 class="sect">Tangga Gelar</h3>
+    <div class="title-ladder" id="title-ladder"></div>
+  </div>
+
+  <!-- ============ PROFIL ============ -->
+  <div class="screen" id="scr-profil">
+    <div class="topbar">
+      <button class="iconbtn" data-back="1"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M15 5l-7 7 7 7"/></svg></button>
+      <div class="h1">Profil</div>
+    </div>
+    <div style="display:flex;flex-direction:column;align-items:center;gap:10px;margin:8px 0 16px">
+      <div class="avatar-big" id="pr-av">g</div>
+      <div class="muted">Akun tamu otomatis &mdash; tanpa login</div>
+    </div>
+    <div class="card">
+      <h3 class="sect" style="margin-top:0">Nama Pemain</h3>
+      <div class="row">
+        <input id="name-input" maxlength="15" placeholder="guest">
+        <button class="btn teal" id="name-save" style="flex:0 0 auto;width:auto;padding:12px 18px">Simpan</button>
+      </div>
+      <div class="muted mt8">Maks 15 karakter &middot; hanya huruf, angka, garis bawah &middot; tanpa karakter spesial</div>
+    </div>
+    <h3 class="sect">Statistik</h3>
+    <div class="stats-grid" id="pr-stats"></div>
+    <button class="btn danger mt24" id="pr-reset">Hapus Semua Data</button>
+  </div>
+
+  <!-- ============ KREDIT ============ -->
+  <div class="screen" id="scr-kredit">
+    <div class="topbar">
+      <button class="iconbtn" data-back="1"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M15 5l-7 7 7 7"/></svg></button>
+      <div class="h1">Kredit</div>
+    </div>
+    <div class="card" style="text-align:center">
+      <div class="logo-row" id="kr-logo"></div>
+      <div class="muted mt16">Game sambung kata berbasis KBBI.<br>Dikembangkan oleh</div>
+      <div class="h1" style="color:#5adfc9;margin-top:6px;font-size:30px">zdn_gg</div>
+      <div class="muted mt8">Dibuat dengan penuh semangat untuk para pecinta kata.</div>
+    </div>
+    <div class="card donate-card mt16">
+      <h3 class="sect" style="margin-top:0">Dukung Pengembang</h3>
+      <div class="muted">Donasi via <b style="color:#5adfc9">GoPay</b> &mdash; nomor GoPay:</div>
+      <div id="gopay-num">+6287802078095</div>
+      <button class="btn teal" id="btn-copy-gopay" style="max-width:280px;margin:0 auto">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg>
+        Salin Nomor
+      </button>
+      <div class="muted mt8">Buka aplikasi Gojek/GoPay &rarr; Transfer &rarr; ke nomor di atas.</div>
+    </div>
+    <div class="muted mt16" style="text-align:center">Sumber kata: KBBI &mdash; 108.344 entri.<br>Terima kasih telah bermain!</div>
+  </div>
+
+  <!-- ============ ONLINE LOBI ============ -->
+  <div class="screen" id="scr-online">
+    <div class="topbar">
+      <button class="iconbtn" data-back="1"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M15 5l-7 7 7 7"/></svg></button>
+      <div class="h1">Online</div>
+    </div>
+    <div class="modesel">
+      <button class="btn primary diffcard" id="on-create">
+        <span class="grow">BUAT ROOM<span class="sub">Jadi tuan rumah &middot; bagikan PIN 6 digit ke teman</span></span>
+      </button>
+      <button class="btn teal diffcard" id="on-join">
+        <span class="grow">GABUNG ROOM<span class="sub">Cari room di WiFi yang sama, lalu masukkan PIN</span></span>
+      </button>
+    </div>
+    <div class="card mt16"><div class="muted">Pastikan semua pemain terhubung ke <b style="color:#eef1fb">WiFi atau hotspot yang sama</b>. Room terdeteksi otomatis di jaringan yang sama.</div></div>
+  </div>
+
+  <!-- ============ HOST ROOM ============ -->
+  <div class="screen" id="scr-host">
+    <div class="topbar">
+      <button class="iconbtn" id="host-exit"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M15 5l-7 7 7 7"/></svg></button>
+      <div style="flex:1"><div class="h1">Room Kamu</div><div class="muted" id="host-ip" style="font-size:11px"></div></div>
+    </div>
+    <div class="card" style="text-align:center">
+      <div class="muted">PIN Room — bagikan ke temanmu</div>
+      <div id="pin-display">------</div>
+      <button class="btn" id="pin-copy" style="max-width:220px;margin:0 auto;padding:10px 16px;font-size:14px">Salin PIN + IP</button>
+    </div>
+    <h3 class="sect">Pemain (<span id="host-count">1</span>/13)</h3>
+    <div id="room-players"></div>
+    <h3 class="sect">Mode Permainan</h3>
+    <div class="seg" id="host-mode-seg">
+      <button data-m="easy">EASY 25s</button>
+      <button data-m="normal" class="on">NORMAL 15s</button>
+      <button data-m="hard">HARD 10s</button>
+    </div>
+    <button class="btn primary mt16" id="host-start" disabled>Mulai Permainan</button>
+    <h3 class="sect">Chat Room <span style="text-transform:none;letter-spacing:0">(tidak disimpan)</span></h3>
+    <div id="chat-box" style="min-height:100px;max-height:170px"></div>
+    <div id="chat-row">
+      <input id="chat-input" placeholder="tulis pesan..." autocomplete="off">
+      <button class="iconbtn" id="chat-send" style="width:44px;height:44px"><svg width="19" height="19" viewBox="0 0 24 24" fill="currentColor"><path d="M3 11l18-8-8 18-2.5-7.5L3 11z"/></svg></button>
+    </div>
+  </div>
+
+  <!-- ============ JOIN ROOM ============ -->
+  <div class="screen" id="scr-join">
+    <div class="topbar">
+      <button class="iconbtn" data-back="1"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M15 5l-7 7 7 7"/></svg></button>
+      <div class="h1">Gabung Room</div>
+    </div>
+    <h3 class="sect">Room terdeteksi</h3>
+    <div class="roomlist" id="room-list"><div class="muted" id="room-list-empty">Mencari room di jaringan...</div></div>
+    <div class="card mt16">
+      <h3 class="sect" style="margin-top:0">Masuk Manual</h3>
+      <input id="join-ip" placeholder="IP host (contoh 192.168.43.1)" autocomplete="off" style="width:100%;border:2px solid #303a5f;background:#171d33;color:#eef1fb;border-radius:12px;padding:12px 14px;font-family:inherit;margin-bottom:10px;outline:none">
+      <input id="join-pin" placeholder="PIN 6 digit" inputmode="numeric" maxlength="6" autocomplete="off" style="width:100%;border:2px solid #303a5f;background:#171d33;color:#eef1fb;border-radius:12px;padding:12px 14px;font-family:inherit;letter-spacing:6px;font-weight:900;font-size:18px;outline:none;margin-bottom:10px">
+      <button class="btn primary" id="join-btn">Gabung</button>
+    </div>
+    <div class="muted mt8">Tidak menemukan room? Minta host mengecek IP-nya di layar room.</div>
+  </div>
+
+  <!-- ============ CLIENT ROOM ============ -->
+  <div class="screen" id="scr-client">
+    <div class="topbar">
+      <button class="iconbtn" id="client-exit"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M15 5l-7 7 7 7"/></svg></button>
+      <div style="flex:1"><div class="h1" id="client-title">Room</div><div class="muted" id="client-status">menunggu host...</div></div>
+    </div>
+    <div class="card" style="text-align:center"><div class="muted">PIN Room</div><div id="client-pin" style="font-size:34px;font-weight:900;letter-spacing:8px;color:#ffd88a">------</div></div>
+    <h3 class="sect">Pemain</h3>
+    <div id="room-players2"></div>
+    <h3 class="sect">Chat Room <span style="text-transform:none;letter-spacing:0">(tidak disimpan)</span></h3>
+    <div id="chat-box2" style="min-height:120px;max-height:200px"></div>
+    <div id="chat-row">
+      <input id="chat-input2" placeholder="tulis pesan..." autocomplete="off">
+      <button class="iconbtn" id="chat-send2" style="width:44px;height:44px"><svg width="19" height="19" viewBox="0 0 24 24" fill="currentColor"><path d="M3 11l18-8-8 18-2.5-7.5L3 11z"/></svg></button>
+    </div>
+  </div>
+</div>
+<div id="overlay"><div class="card" id="overlay-card"></div></div>
+<div id="modal-root"><div class="card" id="modal-card"></div></div>
+<div id="toast"></div>
+<script src="kamus.js"></script>
+<script src="engine.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
