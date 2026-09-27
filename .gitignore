@@ -15,3 +15,8 @@ Thumbs.db
 # Python test artifacts
 __pycache__/
 *.pyc
+
+# Signing (rahasia — CI membuatnya dari GitHub Secrets)
+keystore.properties
+*.keystore
+*.jks

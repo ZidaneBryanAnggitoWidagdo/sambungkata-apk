@@ -5,7 +5,7 @@
  * ============================================================= */
 "use strict";
 (function () {
-  var APP_VERSION = "1.1.0";
+  var APP_VERSION = "1.1.1";
   var ENGINE = window.Engine;
   var dict = null;
 
@@ -401,15 +401,42 @@
     g.start();
   }
 
-  /* submit jawaban offline */
+  /* submit jawaban — routing 3 jalur:
+   *  1) offline  : G (singleplayer / solo)
+   *  2) online   : HOST — submit langsung ke GameRoom lokal
+   *  3) online   : CLIENT — kirim ke host lewat gmsg {k:"answer"}
+   */
   function submitMyWord() {
-    if (!G || !G.isMyTurn()) return;
-    var w = $("word-input").value;
-    var before = uniqueWordCount();
-    var res = G.room.submit("ME", w, Date.now());
-    if (uniqueWordCount() > before) G._newWords++;
-    if (res.ok) $("word-input").value = "";
-    $("word-input").focus();
+    var inp = $("word-input");
+    if (inp.disabled) return;
+    var w = inp.value;
+    if (!w) return;
+    /* 1) offline */
+    if (G) {
+      if (!G.isMyTurn()) return;
+      var before = uniqueWordCount();
+      var res = G.room.submit("ME", w, Date.now());
+      if (uniqueWordCount() > before) G._newWords++;
+      if (res.ok) inp.value = "";
+      inp.focus();
+      return;
+    }
+    /* 2) online HOST */
+    if (Host.active && Host.inGame && Host.room) {
+      if (!Host.room.running || Host.room.over) return;
+      var cur = Host.room.currentPlayer();
+      if (!cur || cur.id !== "H") return;
+      var res2 = Host.room.submit("H", w, Date.now());
+      if (res2.ok) inp.value = "";
+      inp.focus();
+      return;
+    }
+    /* 3) online CLIENT */
+    if (Client.active && Client.phase === "ingame") {
+      if (Client.curPlayerId !== Client.myId) return; // bukan giliranmu
+      send({ t: "gmsg", d: { k: "answer", word: w } });
+      return; // input dibersihkan saat balasan "answer ok" dari host tiba
+    }
   }
 
   /* ================================================================
@@ -640,6 +667,8 @@
       });
       $("chat-box").innerHTML = "";
       addChat("SISTEM", "Permainan dimulai! Mode " + this.mode.toUpperCase(), true);
+      /* host ikut pindah ke layar game (dulu hilang — host diam di layar room) */
+      show("game", true); _prev = [];
       this.room.start(Date.now());
       this.ticker = setInterval(function () {
         self.room.tick(Date.now());
@@ -741,6 +770,7 @@
       this.active = false; this.inGame = false;
       if (this.ticker) clearInterval(this.ticker);
       if (this.room) { this.room.over = true; this.room.running = false; }
+      try { this.broadcast({ k: "sysmsg", text: "Host menutup room." }); } catch (e) {}
       Net.close();
       if (this.channel === "bt") {
         if (HAS_BT) { try { window.AndroidBridge.btStopHost(); } catch (e) {} }
@@ -846,6 +876,8 @@
           self.phase = "ingame";
           self.mode = d.mode || self.mode;
           $("client-status").textContent = "permainan berjalan — mode " + (d.mode || "").toUpperCase();
+          /* host memulai permainan — pindah ke layar game */
+          show("game", true); _prev = [];
           break;
         case "turn":
           self.prefix = d.prefix;
@@ -865,7 +897,11 @@
         case "answer":
           feedItem({ playerId: d.playerId, playerName: self.nameOf(d.playerId), word: d.word }, d.ok,
             d.ok ? "" : (d.counted ? REASON_TXT[d.reason] || d.reason : "ditolak: " + (REASON_TXT[d.reason] || d.reason)));
-          if (d.ok && d.playerId === self.myId) saveWord(d.word);
+          if (d.ok && d.playerId === self.myId) {
+            saveWord(d.word);
+            var wi = $("word-input");
+            if (wi) { wi.value = ""; wi.focus(); }
+          }
           break;
         case "timeout":
           feedItem({ playerId: d.playerId, playerName: self.nameOf(d.playerId), word: null }, false, "waktu habis");
@@ -1141,6 +1177,26 @@
       if (e.key === "Enter") { e.preventDefault(); submitMyWord(); }
     });
     $("g-exit").onclick = function () {
+      /* host online: akhiri permainan, kembali ke room (pemain tetap terhubung) */
+      if (Host.active && Host.inGame) {
+        confirmBox("Akhiri permainan?", "Permainan online akan diakhiri dan kamu kembali ke room.", "Akhiri", function () {
+          if (Host.room) { Host.room.over = true; Host.room.running = false; }
+          if (Host.ticker) { clearInterval(Host.ticker); Host.ticker = null; }
+          Host.inGame = false;
+          try { Host.broadcast({ k: "over", winnerId: null, stats: [] }); } catch (e) {}
+          Host.renderPlayers(); // aktifkan lagi tombol "Mulai Permainan"
+          show("host", true); _prev = [];
+        }, true);
+        return;
+      }
+      /* client online: keluar dari room */
+      if (Client.active) {
+        confirmBox("Keluar dari room online?", "Kamu akan keluar dari permainan online yang sedang berjalan.", "Keluar", function () {
+          Client.leave();
+          show("menu", true); _prev = [];
+        }, true);
+        return;
+      }
       confirmBox("Keluar dari permainan?", "Progres ronde ini akan hilang. Kata yang sudah tersimpan tetap aman di Kamusku.", "Keluar", function () {
         if (G) G.destroy();
         show("menu", true); _prev = [];

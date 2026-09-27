@@ -3,6 +3,7 @@ name: Android CI
 on:
   push:
     branches: [ main ]
+    tags: [ 'v*' ]
   pull_request:
     branches: [ main ]
   workflow_dispatch:
@@ -34,19 +35,21 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: SambungKata-debug-apk
-          path: app/build/outputs/apk/debug/app-debug.apk
+          path: app/build/outputs/apk/debug/*.apk
 
       - name: Upload release APK (unsigned)
         uses: actions/upload-artifact@v4
         with:
           name: SambungKata-release-unsigned-apk
-          path: app/build/outputs/apk/release/app-release-unsigned.apk
+          path: app/build/outputs/apk/release/*.apk
 
   release:
-    name: Release APK (tag v*)
+    name: Release APK signed (tag v*)
     if: startsWith(github.ref, 'refs/tags/v')
     needs: build
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -60,18 +63,38 @@ jobs:
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v3
 
+      - name: Restore signing keystore dari Secrets
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        run: |
+          echo "$KEYSTORE_BASE64" | base64 -d > release.keystore
+          cat > keystore.properties <<EOF
+          storeFile=release.keystore
+          storePassword=$KEYSTORE_PASSWORD
+          keyAlias=$KEY_ALIAS
+          keyPassword=$KEY_PASSWORD
+          EOF
+
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
 
-      - name: Build release APK
+      - name: Build release APK (signed)
         run: ./gradlew assembleRelease --no-daemon --stacktrace
 
-      - name: Rename APK
+      - name: Verifikasi signature
+        run: |
+          APK=$(ls app/build/outputs/apk/release/*.apk | head -1)
+          $ANDROID_HOME/build-tools/34.0.0/apksigner verify --print-certs "$APK"
+
+      - name: Siapkan nama file rilis
         run: |
           mkdir -p release
-          cp app/build/outputs/apk/release/app-release-unsigned.apk release/SambungKata-${{ github.ref_name }}-unsigned.apk
+          cp app/build/outputs/apk/release/*.apk "release/SambungKata-${GITHUB_REF_NAME}.apk"
 
-      - name: Publish to GitHub Releases
+      - name: Publish ke GitHub Releases
         uses: softprops/action-gh-release@v2
         with:
           files: release/*.apk

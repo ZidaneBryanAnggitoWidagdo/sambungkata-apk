@@ -26,6 +26,11 @@ class GameServer(
     private val pushEvent: (JSONObject) -> Unit
 ) : WebSocketServer(InetSocketAddress(8787)) {
 
+    init {
+        // host bisa stop -> start lagi cepat tanpa gagal bind (port TIME_WAIT)
+        isReuseAddr = true
+    }
+
     companion object {
         const val MAX_CLIENTS = 12          // + 1 host = 13 pemain
         const val BAN_MS = 30_000L          // blokir kick pertama: 30 detik

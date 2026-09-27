@@ -39,7 +39,6 @@ class MainActivity : Activity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
-        applyImmersive()
 
         webView = WebView(this)
         webView.settings.apply {
@@ -55,12 +54,13 @@ class MainActivity : Activity() {
         webView.webChromeClient = WebChromeClient()
         webView.addJavascriptInterface(Bridge(), "AndroidBridge")
         setContentView(webView)
+        applyWindowMode()
         webView.loadUrl("file:///android_asset/index.html")
     }
 
     override fun onWindowFocusChanged(hasFocus: Boolean) {
         super.onWindowFocusChanged(hasFocus)
-        if (hasFocus) applyImmersive()
+        if (hasFocus && ::webView.isInitialized) applyWindowMode()
     }
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
@@ -88,16 +88,46 @@ class MainActivity : Activity() {
         return bt!!
     }
 
-    private fun applyImmersive() {
-        @Suppress("DEPRECATION")
-        window.decorView.systemUiVisibility = (
-            View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
-                or View.SYSTEM_UI_FLAG_FULLSCREEN
-                or View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
-                or View.SYSTEM_UI_FLAG_LAYOUT_STABLE
-                or View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
-                or View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
-        )
+    /**
+     * Mode window yang aman untuk WebView + keyboard di semua API level.
+     *
+     * Bug lama: FLAG_FULLSCREEN + SYSTEM_UI_FLAG_FULLSCREEN menggabungkan
+     * ADJUST_RESIZE — di API 28-29 kombinasi ini RUSAK (window tidak di-resize
+     * saat keyboard muncul, input tertutup keyboard = UI overlap).
+     *
+     * Strategi sekarang:
+     *  - API 30+ : fullscreen penuh (status+nav disembunyikan via WindowInsets-
+     *              Controller), inset keyboard (IME) dipakai untuk memangkas
+     *              tinggi WebView secara manual supaya input tetap terlihat.
+     *  - API 28-29: nav bar disembunyikan (immersive sticky), status bar tetap
+     *              tampil dengan warna tema — supaya ADJUST_RESIZE bekerja
+     *              benar dan keyboard tidak pernah menutupi input.
+     */
+    private fun applyWindowMode() {
+        window.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE)
+        window.statusBarColor = 0xFF0D1120.toInt()
+        window.navigationBarColor = 0xFF0D1120.toInt()
+        if (android.os.Build.VERSION.SDK_INT >= 30) {
+            window.setDecorFitsSystemWindows(false)
+            webView.setOnApplyWindowInsetsListener { v, insets ->
+                val ime = insets.getInsets(android.view.WindowInsets.Type.ime()).bottom
+                v.setPadding(0, 0, 0, ime)
+                insets
+            }
+            window.insetsController?.apply {
+                hide(android.view.WindowInsets.Type.statusBars() or
+                     android.view.WindowInsets.Type.navigationBars())
+                systemBarsBehavior =
+                    android.view.WindowInsetsController.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+            }
+        } else {
+            @Suppress("DEPRECATION")
+            window.decorView.systemUiVisibility = (
+                View.SYSTEM_UI_FLAG_LAYOUT_STABLE
+                    or View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
+                    or View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
+            )
+        }
     }
 
     @Deprecated("Deprecated in Java")
@@ -145,7 +175,7 @@ class MainActivity : Activity() {
     inner class Bridge {
 
         @JavascriptInterface
-        fun getVersion(): String = "1.0.0"
+        fun getVersion(): String = "1.1.1"
 
         @JavascriptInterface
         fun startServer(pin: String, roomName: String) {

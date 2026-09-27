@@ -54,7 +54,7 @@ class BtManager(
     // ---------------- state host ----------------
     private var serverSocket: BluetoothServerSocket? = null
     private var acceptThread: Thread? = null
-    private var hosting = false
+    @Volatile private var hosting = false
     private var pin = ""
 
     private class BtConn(val id: String, val mac: String, val socket: BluetoothSocket) {
@@ -75,11 +75,11 @@ class BtManager(
     private var clientWriter: PrintWriter? = null
     private val clientWriteLock = Any()
     private var clientThread: Thread? = null
-    private var clientMode = false
+    @Volatile private var clientMode = false
 
     // ---------------- scan ----------------
     private var receiverRegistered = false
-    private var scanning = false
+    @Volatile private var scanning = false
 
     private fun newId(): String = synchronized(lock) { "c" + (++counter) }
 
@@ -409,7 +409,12 @@ class BtManager(
         f.addAction(BluetoothAdapter.ACTION_DISCOVERY_FINISHED)
         try {
             if (Build.VERSION.SDK_INT >= 33) {
-                context.registerReceiver(receiver, f, Context.RECEIVER_NOT_EXPORTED)
+                /* RECEIVER_EXPORTED: ACTION_FOUND dikirim proses Bluetooth (uid 1002,
+                 * bukan system uid 1000) — dengan NOT_EXPORTED broadcast bisa tidak
+                 * sampai di sebagian perangkat Android 13/14. Aman memakai EXPORTED
+                 * karena ACTION_FOUND & ACTION_DISCOVERY_FINISHED adalah protected
+                 * broadcast (hanya sistem yang boleh mengirim, tak bisa dipalsukan). */
+                context.registerReceiver(receiver, f, Context.RECEIVER_EXPORTED)
             } else {
                 context.registerReceiver(receiver, f)
             }

@@ -14,7 +14,7 @@
   <img src="https://img.shields.io/badge/platform-Android%209%2B-3ddc84?logo=android&logoColor=white" alt="Android 9+">
   <img src="https://img.shields.io/badge/kata%20KBBI-108.344-ffd88a" alt="108.344 kata">
   <img src="https://img.shields.io/badge/pemain%20online-13%20max-5adfc9" alt="13 pemain">
-  <img src="https://img.shields.io/badge/version-1.1.0-f7a928" alt="versi">
+  <img src="https://img.shields.io/badge/version-1.1.1-f7a928" alt="versi">
   <img src="https://img.shields.io/badge/license-MIT-blue" alt="MIT">
 </p>
 
@@ -28,14 +28,38 @@ Aplikasi ini dibangun dengan arsitektur **WebView hibrida**: seluruh layar adala
 
 ## Unduh APK
 
-**Cara termudah — build otomatis via GitHub Actions (tanpa Android Studio):**
+### Cara 1 — Unduh APK **signed** dari Releases (paling mudah) ✨
+
+1. Buka halaman [**Releases**](https://github.com/ZidaneBryanAnggitoWidagdo/sambungkata-apk/releases)
+2. Unduh **`SambungKata-v1.1.1.apk`** dari rilis terbaru
+3. Buka file di HP → izinkan "instal dari sumber tidak dikenal" (jika diminta) → **Install**
+4. Selesai — APK sudah **ditandatangani (signed)** dengan sertifikat rilis resmi & siap dipakai
+
+> APK release diunduh dari Releases adalah build **signed v2 scheme** — aman diinstal di Android 9 ke atas dan bisa di-update langsung ke versi berikutnya tanpa uninstall.
+
+### Cara 2 — Build otomatis via GitHub Actions
 
 1. Buka tab [**Actions**](https://github.com/ZidaneBryanAnggitoWidagdo/sambungkata-apk/actions/workflows/android.yml) di repo ini
 2. Pilih run **"Android CI"** terbaru → scroll ke bagian **Artifacts**
-3. Unduh **`SambungKata-debug-apk`** → ekstrak → pasang `app-debug.apk` di HP
-4. Bisa juga build sendiri: buka repo di Android Studio (JDK 17) → `./gradlew assembleDebug`
+3. Unduh **`SambungKata-debug-apk`** → ekstrak → pasang APK di HP
 
-> Versi rilis dengan tag `v*` otomatis terbit di halaman [Releases](https://github.com/ZidaneBryanAnggitoWidagdo/sambungkata-apk/releases).
+### Cara 3 — Build sendiri
+
+Buka repo di Android Studio (JDK 17) → `./gradlew assembleDebug`, atau `./gradlew assembleRelease` setelah menyiapkan `keystore.properties`.
+
+## Catatan Rilis
+
+**v1.1.1** — perbaikan besar mode multiplayer & build:
+- 🔧 **KRITIS**: perbaiki jalur jawaban mode online — dulu client maupun host tidak bisa mengirim jawaban saat giliran tiba (game online tidak bisa dimainkan). Sekarang host & client saling bergantian menjawab lewat protokol `gmsg`.
+- 🔧 Layar game kini terbuka otomatis di sisi host & client saat permainan dimulai.
+- 🔧 Discovery NSD: antrean resolve — semua room di jaringan kini terdeteksi (dulu hanya room pertama).
+- 🔧 Bluetooth: receiver scan dipasang `RECEIVER_EXPORTED` (perangkat Android 13/14 kini selalu menemukan host), flag `@Volatile` untuk keandalan stop host.
+- 🔧 Keyboard tidak lagi menutupi input jawaban di API 28–29 (perbaikan konflik fullscreen + `adjustResize`); API 30+ memakai WindowInsets IME.
+- 🔧 Server WiFi bisa restart cepat tanpa gagal bind (`SO_REUSEADDR`).
+- ✨ APK release resmi **signed** (CI + lokal) & tersedia di halaman Releases.
+- ✅ Suite baru **test E2E online 2-perangkat** (24 assertion): join PIN, giliran bergantian, kick+alasan, dll.
+
+**v1.1.0** — mabar Bluetooth (RFCOMM), kanal WiFi/Bluetooth, responsif 10 viewport, CI build APK, README baru.
 
 ## Tangkapan Layar
 
@@ -125,7 +149,8 @@ Pengembangan berjalan dengan **blackbox testing** di setiap fitur:
 | `test_ui_browser.py` | alur UI end-to-end di headless browser | 41 ✔ |
 | `test_responsive.py` | **10 ukuran layar** — overflow/tumpang-tindih/kegunaan | 184 ✔ |
 | `test_bt_flow.py` | alur Bluetooth & WiFi: izin, scan, host/join, kick+alasan | 33 ✔ |
-| **Total** | | **3.545 assertion lulus** |
+| `test_online_e2e.py` | **E2E 2 perangkat**: host+client main sungguhan via relay — PIN, giliran bergantian, jawaban salah, akhiri game, kick | 24 ✔ |
+| **Total** | | **3.569 assertion lulus** |
 
 ## Struktur Proyek
 
@@ -138,9 +163,9 @@ app/src/main/
 │   ├── BtManager.kt      # host/client Bluetooth RFCOMM
 │   └── NsdHelper.kt      # discovery room via mDNS
 └── AndroidManifest.xml
-tests/                  # 7 suite blackbox (Node.js + Playwright)
+tests/                  # 8 suite blackbox (Node.js + Playwright)
 tools/                  # skrip build kamus, ikon, banner, screenshot
-.github/workflows/      # CI: build APK otomatis + release
+.github/workflows/      # CI: build APK otomatis + release signed (tag v*)
 ```
 
 ## Kredit & Donasi

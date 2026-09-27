@@ -23,6 +23,14 @@ class NsdHelper(
     private var discListener: NsdManager.DiscoveryListener? = null
     private var serviceName: String = "SK-room"
 
+    /* NSD hanya mengizinkan SATU resolveService aktif pada satu waktu.
+     * Memanggil resolve untuk tiap room sekaligus membuat resolve kedua dst
+     * gagal (FAILURE_ALREADY_ACTIVE) — room tidak pernah muncul di daftar.
+     * Solusi: antrean resolve yang diproses satu per satu. */
+    private val resolveQueue = ArrayDeque<NsdServiceInfo>()
+    private val seenServices = HashSet<String>()
+    @Volatile private var resolving = false
+
     /** Daftarkan service; bila nama bentrok, coba ulang dengan angka acak. */
     fun register(port: Int, baseName: String) {
         unregister()
@@ -63,25 +71,17 @@ class NsdHelper(
 
     fun discover() {
         stopDiscovery()
+        synchronized(resolveQueue) { resolveQueue.clear(); seenServices.clear() }
         val listener = object : NsdManager.DiscoveryListener {
             override fun onDiscoveryStarted(regType: String) {}
             override fun onServiceFound(serviceInfo: NsdServiceInfo) {
                 if (serviceInfo.serviceType?.startsWith("_sambungkata") != true) return
-                try {
-                    nsdManager.resolveService(serviceInfo, object : NsdManager.ResolveListener {
-                        override fun onResolveFailed(info: NsdServiceInfo, errorCode: Int) {}
-                        @Suppress("DEPRECATION")
-                        override fun onServiceResolved(info: NsdServiceInfo) {
-                            val ip = try { info.host?.hostAddress ?: "" } catch (e: Exception) { "" }
-                            if (ip.isEmpty()) return
-                            pushEvent(JSONObject()
-                                .put("k", "room_found")
-                                .put("name", info.serviceName)
-                                .put("ip", ip)
-                                .put("port", info.port))
-                        }
-                    })
-                } catch (e: Exception) {}
+                val key = serviceInfo.serviceName ?: return
+                synchronized(resolveQueue) {
+                    if (!seenServices.add(key)) return // dedupe nama service
+                    resolveQueue.add(serviceInfo)
+                }
+                pumpResolve()
             }
             override fun onServiceLost(serviceInfo: NsdServiceInfo) {}
             override fun onDiscoveryStopped(serviceType: String) {}
@@ -94,7 +94,41 @@ class NsdHelper(
         } catch (e: Exception) {}
     }
 
+    /** Proses antrean resolve satu per satu (NSD = 1 resolve aktif). */
+    private fun pumpResolve() {
+        synchronized(resolveQueue) {
+            if (resolving) return
+            val next = resolveQueue.removeFirstOrNull() ?: return
+            resolving = true
+            try {
+                nsdManager.resolveService(next, object : NsdManager.ResolveListener {
+                    override fun onResolveFailed(info: NsdServiceInfo, errorCode: Int) {
+                        synchronized(resolveQueue) { resolving = false }
+                        pumpResolve()
+                    }
+                    @Suppress("DEPRECATION")
+                    override fun onServiceResolved(info: NsdServiceInfo) {
+                        synchronized(resolveQueue) { resolving = false }
+                        val ip = try { info.host?.hostAddress ?: "" } catch (e: Exception) { "" }
+                        if (ip.isNotEmpty()) {
+                            pushEvent(JSONObject()
+                                .put("k", "room_found")
+                                .put("name", info.serviceName ?: "")
+                                .put("ip", ip)
+                                .put("port", info.port))
+                        }
+                        pumpResolve()
+                    }
+                })
+            } catch (e: Exception) {
+                resolving = false
+                pumpResolve()
+            }
+        }
+    }
+
     fun stopDiscovery() {
+        synchronized(resolveQueue) { resolveQueue.clear() }
         val l = discListener ?: return
         discListener = null
         try { nsdManager.stopServiceDiscovery(l) } catch (e: Exception) {}
